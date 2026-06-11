@@ -15,7 +15,7 @@
  */
 
 export function resolveModelUrl(model: string): string[] {
-  const base = '/models';
+  const base = `${import.meta.env.BASE_URL}models`;
 
   if (!model || model.trim().length === 0) {
     return [`${base}/skull3.obj`];
