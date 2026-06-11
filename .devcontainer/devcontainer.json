@@ -3,7 +3,11 @@
 {
 	"name": "Node.js & TypeScript",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-trixie"
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-trixie",
+
+  // "mounts": [
+  //   "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
+  // ]
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
