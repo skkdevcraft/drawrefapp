@@ -28,7 +28,7 @@ export function createScene(): THREE.Scene {
  * - Rim directional: back rim light from below
  */
 export function addLights(scene: THREE.Scene): { keyLight: THREE.DirectionalLight } {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.01);
   scene.add(ambientLight);
 
   const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
