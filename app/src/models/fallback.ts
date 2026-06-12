@@ -21,6 +21,8 @@ export function createFallbackCube(): THREE.Object3D {
   });
   const box = new THREE.Mesh(geometry, material);
   box.position.set(0, 0, 0);
+  box.castShadow = true;
+  box.receiveShadow = true;
 
   // Subtle wireframe overlay
   const wireframeGeo = new THREE.EdgesGeometry(geometry);

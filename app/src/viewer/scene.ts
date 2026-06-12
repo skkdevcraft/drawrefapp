@@ -33,6 +33,20 @@ export function addLights(scene: THREE.Scene): { keyLight: THREE.DirectionalLigh
 
   const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
   keyLight.position.set(5, 8, 6);
+  keyLight.castShadow = true;
+
+  // Shadow camera sized for a model normalized to radius ~1
+  const shadowSize = 4;
+  keyLight.shadow.camera.left = -shadowSize;
+  keyLight.shadow.camera.right = shadowSize;
+  keyLight.shadow.camera.top = shadowSize;
+  keyLight.shadow.camera.bottom = -shadowSize;
+  keyLight.shadow.camera.near = 0.5;
+  keyLight.shadow.camera.far = 20;
+  keyLight.shadow.mapSize.set(1024, 1024);
+  keyLight.shadow.radius = 0.5; // default softness for half (0.5)
+  keyLight.shadow.bias = -0.001;
+
   scene.add(keyLight);
 
   const fillLight = new THREE.DirectionalLight(0x8ab4f8, 0.4);
@@ -70,12 +84,17 @@ export function updateKeyLight(
   keyLight.position.set(x, y, z);
   keyLight.intensity = intensity;
 
+  // Make the shadow camera look at the origin from the light's position
+  keyLight.shadow.camera.position.set(x, y, z);
+  keyLight.shadow.camera.lookAt(0, 0, 0);
+
   // Softness: adjust shadow radius and bias to simulate softer shadows
-  if (keyLight.shadow) {
-    const shadowRadius = 0.5 + softness * 4;
-    keyLight.shadow.radius = shadowRadius;
-    keyLight.shadow.bias = -0.001 - softness * 0.002;
-  }
+  const shadowRadius = 0.5 + softness * 4;
+  keyLight.shadow.radius = shadowRadius;
+  keyLight.shadow.bias = -0.001 - softness * 0.002;
+
+  keyLight.shadow.camera.updateProjectionMatrix();
+  keyLight.shadow.needsUpdate = true;
 
   keyLight.updateMatrix();
 }

@@ -21,6 +21,9 @@ import * as THREE from 'three';
  * 3. Compute bounding sphere of the centred model.
  * 4. Uniformly scale model so sphere radius == targetRadius.
  *
+ * Also enables shadow casting/receiving on all Mesh descendants so the
+ * softness setting produces visible shadows.
+ *
  * @param model        - The model to normalise (mutated in place)
  * @param targetRadius - Desired bounding sphere radius (default: 1)
  */
@@ -48,4 +51,12 @@ export function normalizeModel(model: THREE.Object3D, targetRadius = 1): void {
 
   // 4. Apply uniform scale to the root
   model.scale.set(scale, scale, scale);
+
+  // 5. Enable shadow casting/receiving on all mesh descendants
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
 }

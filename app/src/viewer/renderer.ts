@@ -8,6 +8,9 @@ import * as THREE from 'three';
 
 /**
  * Creates a WebGLRenderer attached to the given canvas.
+ *
+ * Shadow maps are enabled with PCFSoftShadowMap so that the softness
+ * setting (shadow.radius) actually produces visible soft shadows.
  */
 export function createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
   const renderer = new THREE.WebGLRenderer({
@@ -15,6 +18,9 @@ export function createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
     antialias: true,
     alpha: false,
   });
+
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
