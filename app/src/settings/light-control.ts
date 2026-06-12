@@ -600,6 +600,17 @@ export function createLightControl(
   svg.addEventListener('pointerup', handlePointerUp);
   svg.addEventListener('pointercancel', handlePointerUp);
 
+  /* ── External update ────────────────────────────── */
+
+  /**
+   * Lets external code (e.g. the panel subscriber or presets) update
+   * the widget's displayed state without triggering the onChange callback.
+   */
+  (container as any)._updateLight = (v: LightValue) => {
+    value = v;
+    update(v);
+  };
+
   /* ── Cleanup ────────────────────────────────────── */
 
   (container as any)._dispose = () => {

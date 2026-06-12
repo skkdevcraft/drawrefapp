@@ -73,12 +73,18 @@ export class SettingsPanel {
         }
       }
 
-      // Sync control value when setting changes externally (e.g. URL load)
+      // Sync control value when setting changes externally (e.g. URL load, presets)
       const control = this.panel.querySelector<HTMLElement>(
         `[data-setting-id="${id}"]`
       );
-      if (control && 'value' in control) {
-        (control as HTMLSelectElement).value = String(value);
+      if (control) {
+        // Light controls expose a custom update method for external sync
+        const updateLight = (control as any)._updateLight;
+        if (updateLight) {
+          updateLight(value);
+        } else if ('value' in control) {
+          (control as HTMLSelectElement).value = String(value);
+        }
       }
     });
   }
