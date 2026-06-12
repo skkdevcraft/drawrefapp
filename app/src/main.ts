@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { createRenderer } from './viewer/renderer';
-import { createScene, addLights, updateBackground } from './viewer/scene';
+import { createScene, addLights, updateBackground, updateKeyLight } from './viewer/scene';
 import { createCamera, fitCamera } from './viewer/camera';
 import { createControls } from './viewer/controls';
 import { createRenderLoop } from './viewer/render-loop';
@@ -38,7 +38,8 @@ import { createFallbackCube } from './models/fallback';
 import { applyCameraState } from './camera/state';
 
 import { SETTINGS } from './settings/registry';
-import { set } from './settings/store';
+import type { LightValue } from './settings/registry';
+import { get, set, subscribe } from './settings/store';
 import { deserializeState } from './settings/serialization';
 
 import { startUrlSync } from './url/state';
@@ -52,6 +53,7 @@ export interface ViewerAPI {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
+  keyLight: THREE.DirectionalLight;
   resize: () => void;
   /** Refits the camera to the current model with the given target radius. */
   fitCamera: (targetRadius?: number) => void;
@@ -94,7 +96,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
 
   /* ── Lighting ─────────────────────────────────── */
 
-  addLights(scene);
+  const { keyLight } = addLights(scene);
 
   /* ── Fallback Model ────────────────────────────── */
 
@@ -185,6 +187,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
     scene,
     camera,
     controls,
+    keyLight,
     resize: onResize,
     fitCamera: fitCameraToTarget,
     requestRender,
@@ -358,11 +361,35 @@ function createUI(): void {
     viewer.camera,
   );
 
+  /* ── Key Light Sync ────────────────────────────── */
+
+  /**
+   * Applies the current keylight setting to the scene.
+   */
+  function applyKeyLight(): void {
+    const v = get('keylight') as LightValue;
+    if (v) {
+      updateKeyLight(viewer.keyLight, v);
+      viewer.requestRender();
+    }
+  }
+
+  // Apply initial keylight from URL state (already loaded into store)
+  applyKeyLight();
+
+  // Subscribe to keylight changes
+  const unsubKeyLight = subscribe((id) => {
+    if (id === 'keylight') {
+      applyKeyLight();
+    }
+  });
+
   /* ── Integrate cleanup into viewer.dispose ───────── */
 
   const origDispose = viewer.dispose.bind(viewer);
   viewer.dispose = () => {
     stopUrlSync();
+    unsubKeyLight();
     window.removeEventListener('resize', onWindowResize);
     settingsPanel.dispose();
     origDispose();

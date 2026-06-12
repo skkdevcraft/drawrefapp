@@ -8,6 +8,7 @@
  */
 
 import * as THREE from 'three';
+import type { LightValue } from '../settings/registry';
 
 /**
  * Creates an empty Scene with a neutral dark background.
@@ -26,13 +27,13 @@ export function createScene(): THREE.Scene {
  * - Fill directional: cool fill from upper-left-back
  * - Rim directional: back rim light from below
  */
-export function addLights(scene: THREE.Scene): void {
+export function addLights(scene: THREE.Scene): { keyLight: THREE.DirectionalLight } {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
 
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-  dirLight.position.set(5, 8, 6);
-  scene.add(dirLight);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  keyLight.position.set(5, 8, 6);
+  scene.add(keyLight);
 
   const fillLight = new THREE.DirectionalLight(0x8ab4f8, 0.4);
   fillLight.position.set(-4, 2, -3);
@@ -41,6 +42,42 @@ export function addLights(scene: THREE.Scene): void {
   const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
   rimLight.position.set(0, -6, -4);
   scene.add(rimLight);
+
+  return { keyLight };
+}
+
+/**
+ * Updates the key directional light based on the LightValue settings.
+ *
+ * Converts azimuth/elevation spherical coordinates to a Cartesian position
+ * aimed at the origin. Intensity and softness are applied directly.
+ */
+export function updateKeyLight(
+  keyLight: THREE.DirectionalLight,
+  lightValue: LightValue,
+): void {
+  const { azimuth, elevation, intensity, softness } = lightValue;
+
+  // Spherical to Cartesian — azimuth around Y, elevation up from horizon
+  const azRad = azimuth * (Math.PI / 180);
+  const elRad = elevation * (Math.PI / 180);
+
+  const distance = 10;
+  const x = distance * Math.cos(elRad) * Math.sin(azRad);
+  const y = distance * Math.sin(elRad);
+  const z = distance * Math.cos(elRad) * Math.cos(azRad);
+
+  keyLight.position.set(x, y, z);
+  keyLight.intensity = intensity;
+
+  // Softness: adjust shadow radius and bias to simulate softer shadows
+  if (keyLight.shadow) {
+    const shadowRadius = 0.5 + softness * 4;
+    keyLight.shadow.radius = shadowRadius;
+    keyLight.shadow.bias = -0.001 - softness * 0.002;
+  }
+
+  keyLight.updateMatrix();
 }
 
 /**
