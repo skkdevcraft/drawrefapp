@@ -380,6 +380,14 @@ function createUI(): void {
   const settingsPanel = new SettingsPanel(
     (open) => {
       resizeScene(open, settingsPanel);
+      if (open) {
+        // Clear cache and regenerate thumbnails fresh every time panel opens
+        clearPreviewCache();
+        generateThumbnails();
+      } else {
+        // Clear cache so thumbnails are regenerated next time panel opens
+        clearPreviewCache();
+      }
     },
     viewerControls,
   );
