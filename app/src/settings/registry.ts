@@ -159,6 +159,56 @@ const keylightSetting: SettingDefinition<LightValue> = {
   },
 };
 
+/* ── Fill Light Setting ──────────────────────────── */
+
+/**
+ * Controls the fill directional light parameters.
+ *
+ * Uses the same LightValue type as the key light.
+ * Defaults mimic the original hardcoded fill light position
+ * (back-left, slightly elevated, cool-blue tint, moderate intensity).
+ */
+const fillLightSetting: SettingDefinition<LightValue> = {
+  id: 'fill',
+  label: 'Fill Light',
+  type: 'light',
+
+  defaultValue: {
+    azimuth: 225,
+    elevation: 20,
+    intensity: 0.4,
+    softness: 0,
+  },
+
+  serialize(value) {
+    const { azimuth, elevation, intensity, softness } = value;
+    return `${azimuth},${elevation},${intensity},${softness}`;
+  },
+
+  deserialize(raw) {
+    if (raw === null) {
+      return { ...fillLightSetting.defaultValue };
+    }
+
+    const parts = raw.split(',').map((s) => s.trim()).map(Number);
+
+    if (parts.length !== 4 || parts.some(isNaN)) {
+      return { ...fillLightSetting.defaultValue };
+    }
+
+    return {
+      azimuth: clamp(parts[0], 0, 360),
+      elevation: clamp(parts[1], 0, 90),
+      intensity: clamp(parts[2], 0, 5),
+      softness: clamp(parts[3], 0, 1),
+    };
+  },
+
+  createControl(value, onChange) {
+    return createLightControl(value, onChange);
+  },
+};
+
 /* ── Registry ──────────────────────────────────────── */
 
 /**
@@ -173,5 +223,6 @@ const keylightSetting: SettingDefinition<LightValue> = {
 export const SETTINGS = [
   buttonPositionSetting,
   keylightSetting,
+  fillLightSetting,
   // Future settings are added here — no other code changes needed.
 ] as const;

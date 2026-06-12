@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { createRenderer } from './viewer/renderer';
-import { createScene, addLights, updateBackground, updateKeyLight } from './viewer/scene';
+import { createScene, addLights, updateBackground, updateKeyLight, updateFillLight } from './viewer/scene';
 import { createCamera, fitCamera } from './viewer/camera';
 import { createControls } from './viewer/controls';
 import { createRenderLoop } from './viewer/render-loop';
@@ -54,6 +54,7 @@ export interface ViewerAPI {
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
   keyLight: THREE.DirectionalLight;
+  fillLight: THREE.DirectionalLight;
   resize: () => void;
   /** Refits the camera to the current model with the given target radius. */
   fitCamera: (targetRadius?: number) => void;
@@ -96,7 +97,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
 
   /* ── Lighting ─────────────────────────────────── */
 
-  const { keyLight } = addLights(scene);
+  const { keyLight, fillLight } = addLights(scene);
 
   /* ── Fallback Model ────────────────────────────── */
 
@@ -188,6 +189,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
     camera,
     controls,
     keyLight,
+    fillLight,
     resize: onResize,
     fitCamera: fitCameraToTarget,
     requestRender,
@@ -384,12 +386,36 @@ function createUI(): void {
     }
   });
 
+  /* ── Fill Light Sync ────────────────────────────── */
+
+  /**
+   * Applies the current fill light setting to the scene.
+   */
+  function applyFillLight(): void {
+    const v = get('fill') as LightValue;
+    if (v) {
+      updateFillLight(viewer.fillLight, v);
+      viewer.requestRender();
+    }
+  }
+
+  // Apply initial fill light from URL state
+  applyFillLight();
+
+  // Subscribe to fill light changes
+  const unsubFillLight = subscribe((id) => {
+    if (id === 'fill') {
+      applyFillLight();
+    }
+  });
+
   /* ── Integrate cleanup into viewer.dispose ───────── */
 
   const origDispose = viewer.dispose.bind(viewer);
   viewer.dispose = () => {
     stopUrlSync();
     unsubKeyLight();
+    unsubFillLight();
     window.removeEventListener('resize', onWindowResize);
     settingsPanel.dispose();
     origDispose();
