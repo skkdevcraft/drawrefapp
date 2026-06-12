@@ -196,12 +196,13 @@ export function createLightControl(
   addLabel('SOFTNESS', HEIGHT * 0.38 + SOFT_BAR_Y - 12);
   addLabel('INTENSITY', HEIGHT * 0.38 + INTENS_BAR_Y - 12);
 
-  // Light position dot
+  // Light position dot (draggable — controls both azimuth & elevation)
   const lightDot = document.createElementNS(ns, 'circle');
   lightDot.setAttribute('r', '8');
   lightDot.setAttribute('fill', 'var(--accent)');
   lightDot.setAttribute('stroke', '#fff');
   lightDot.setAttribute('stroke-width', '2');
+  lightDot.setAttribute('cursor', 'grab');
   svg.append(lightDot);
 
   // Light dot glow
@@ -337,6 +338,20 @@ export function createLightControl(
   }
 
   /**
+   * Converts a point inside the disk to an elevation angle (0-90°).
+   * distance from center → elevation: center = 90° (zenith), edge = 0° (horizon).
+   * Uses the same mapping as the lightDot projection: maxDist = AZIMUTH_R * 0.65.
+   */
+  function pointToElevationFromDisk(x: number, y: number): number {
+    const dx = x - CX;
+    const dy = y - CYC;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const maxDist = AZIMUTH_R * 0.65;
+    const clamped = Math.min(maxDist, Math.max(0, dist));
+    return (1 - clamped / maxDist) * 90;
+  }
+
+  /**
    * Converts softness to a point on the bottom horizontal bar.
    */
   function softnessToPoint(softness: number): { x: number; y: number } {
@@ -464,9 +479,9 @@ export function createLightControl(
 
   /* ── Pointer Interaction ────────────────────────── */
 
-  let activeControl: 'azimuth' | 'elevation' | 'softness' | 'intensity' | null = null;
+  let activeControl: 'azimuth' | 'elevation' | 'softness' | 'intensity' | 'direction' | null = null;
 
-  function getControlFromPoint(clientX: number, clientY: number): 'azimuth' | 'elevation' | 'softness' | 'intensity' | null {
+  function getControlFromPoint(clientX: number, clientY: number): 'azimuth' | 'elevation' | 'softness' | 'intensity' | 'direction' | null {
     const rect = svg.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
@@ -507,10 +522,9 @@ export function createLightControl(
       return 'azimuth';
     }
 
-    // Inside the circle: check if closer to center than AZIMUTH_R + margin
-    // Default to azimuth for inside-taps
+    // Inside the circle: drag controls both azimuth and elevation
     if (dist < AZIMUTH_R + TOUCH_TARGET * scaleX * 0.3) {
-      return 'azimuth';
+      return 'direction';
     }
 
     return null;
@@ -567,6 +581,11 @@ export function createLightControl(
       }
       case 'intensity': {
         v.intensity = Math.min(5, Math.max(0, pointToIntensity(svgX)));
+        break;
+      }
+      case 'direction': {
+        v.azimuth = pointToAzimuth(svgX, svgY);
+        v.elevation = pointToElevationFromDisk(svgX, svgY);
         break;
       }
     }
