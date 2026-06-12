@@ -317,24 +317,23 @@ export function createLightControl(
 
   /**
    * Converts a point to an elevation angle.
+   *
+   * The left semi-circle runs from left center (atan2=180°) = elevation 0°
+   * up to top center (atan2=270°) = elevation 90°.
    */
   function pointToElevation(x: number, y: number): number {
     const dx = x - CX;
     const dy = y - CYC;
     let deg = Math.atan2(dy, dx) * (180 / Math.PI);
-    // Map to 0-90°: bottom of left semi-circle = 0°, top = 90°
-    deg = 180 - deg; // flip so bottom is 0
+    // Normalize to [0, 360)
     if (deg < 0) deg += 360;
-    // Clamp to left side (90° to 270° in circle coords, which maps to 0-90° elevation)
-    if (deg > 90 && deg < 270) {
-      // Pick the closer edge
-      if (deg < 180) deg = 90;
-      else deg = 270;
+    // Left semi-circle from left (180°) to top (270°) maps linearly to 0→90
+    if (deg >= 180 && deg <= 270) {
+      return deg - 180;
     }
-    // Map 90→270 range to 0→90
-    if (deg >= 270) deg = 90 - (deg - 270);
-    else if (deg <= 90) deg = 90 - deg;
-    return Math.min(90, Math.max(0, deg));
+    // Clamp to nearest edge
+    if (deg < 180) return 0;  // below left → horizon
+    return 90;                 // past top → zenith
   }
 
   /**
@@ -410,13 +409,13 @@ export function createLightControl(
     azimHandle.setAttribute('cx', String(azPt.x));
     azimHandle.setAttribute('cy', String(azPt.y));
 
-    // Elevation arc track (left semi-circle, bottom to top: 0° to 180° in our coords = 0° to 90° elevation)
-    const elevTrackD = arcPath(CX, CYC, ELEV_ARC_R, 0, 180);
+    // Elevation arc track (left semi-circle: from left=0° up to top=90°)
+    const elevTrackD = arcPath(CX, CYC, ELEV_ARC_R, 270, 360);
     elevTrack.setAttribute('d', elevTrackD);
 
-    // Elevation fill (from 0° elevation = bottom, to current elevation)
+    // Elevation fill (from 0° elevation = left, to current elevation)
     if (v.elevation > 0) {
-      elevArc.setAttribute('d', arcPath(CX, CYC, ELEV_ARC_R, 0, v.elevation));
+      elevArc.setAttribute('d', arcPath(CX, CYC, ELEV_ARC_R, 270, 270 + v.elevation));
     } else {
       elevArc.setAttribute('d', '');
     }
