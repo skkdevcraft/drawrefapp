@@ -46,6 +46,9 @@ import { startUrlSync } from './url/state';
 
 import { SettingsPanel, type ViewerControls } from './ui/panel';
 
+import { applyMaterialPreset, type MaterialPreset } from './settings/material-preset';
+import { generateMaterialPreviews, invalidateModelPreviews } from './settings/material-preview';
+
 /* ── Exposed API ──────────────────────────────────── */
 
 export interface ViewerAPI {
@@ -302,6 +305,12 @@ loadModelFromName(modelName)
     // 3b. Apply glossiness setting to all materials
     applyGlossinessToModel(model);
 
+    // 3c. Apply material preset (overrides color, roughness, metalness)
+    const preset = get('material') as MaterialPreset;
+    if (preset) {
+      applyMaterialPreset(model, preset);
+    }
+
     // 4. Replace fallback → fit camera → render
     viewer.setModel(model);
 
@@ -319,7 +328,7 @@ loadModelFromName(modelName)
     console.error('[main] Failed to load model:', err);
     // Fallback box remains visible — the viewer never starts empty.
     // currentModelName stays null, so URL sync omits the model param.
-    // Still track the fallback model so glossiness can be applied
+    // Still track the fallback model so glossiness and material can be applied
     currentModelObject = viewer.getModel();
   })
   .finally(() => {
@@ -470,7 +479,7 @@ function createUI(): void {
     }
   });
 
-  /* ── Glossiness Sync ────────────────────────────── */
+  /* ── Glossiness Sync ────────────────────────────────── */
 
   /**
    * Applies the current glossiness setting to the loaded model.
@@ -492,6 +501,62 @@ function createUI(): void {
     }
   });
 
+  /* ── Material Preset Sync ────────────────────────── */
+
+  /**
+   * Applies the current material preset to the loaded model.
+   */
+  function applyMaterial(): void {
+    if (currentModelObject) {
+      const preset = get('material') as MaterialPreset;
+      if (preset) {
+        applyMaterialPreset(currentModelObject, preset);
+        viewer.requestRender();
+      }
+    }
+  }
+
+  // Apply initial material preset from URL state (already in store)
+  applyMaterial();
+
+  // Subscribe to material preset changes
+  const unsubMaterial = subscribe((id) => {
+    if (id === 'material') {
+      applyMaterial();
+    }
+  });
+
+  /* ── Material Preview Thumbnails ──────────────────── */
+
+  /**
+   * Generates preview thumbnails for all material presets using the
+   * current loaded model. Populates the material control preview cards.
+   *
+   * Thumbnails are generated asynchronously so the UI remains responsive.
+   * Cached thumbnails are reused across calls for the same model.
+   */
+  function generateThumbnails(): void {
+    const model = viewer.getModel();
+    if (!model) return;
+
+    generateMaterialPreviews(model, viewer.renderer).then((previews) => {
+      const materialContainer = document.querySelector(
+        '[data-setting-id="material"]',
+      );
+      if (!materialContainer) return;
+
+      const setThumbnail = (materialContainer as any)._setThumbnail;
+      if (setThumbnail) {
+        for (const [preset, dataUrl] of previews) {
+          setThumbnail(preset, dataUrl);
+        }
+      }
+    });
+  }
+
+  // Generate thumbnails after the panel is created and model is loaded
+  generateThumbnails();
+
   /* ── Integrate cleanup into viewer.dispose ───────── */
 
   const origDispose = viewer.dispose.bind(viewer);
@@ -501,6 +566,8 @@ function createUI(): void {
     unsubFillLight();
     unsubRimLight();
     unsubGloss();
+    unsubMaterial();
+    invalidateModelPreviews();
     window.removeEventListener('resize', onWindowResize);
     settingsPanel.dispose();
     origDispose();

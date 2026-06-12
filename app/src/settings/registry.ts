@@ -34,7 +34,8 @@ export type SettingDefinition<T> = {
     | 'number'
     | 'select'
     | 'color'
-    | 'light';
+    | 'light'
+    | 'material-preset';
 
   defaultValue: T;
 
@@ -113,6 +114,7 @@ export type LightValue = {
 /* ── Light Control UI ─────────────────────────────── */
 
 import { createLightControl } from './light-control';
+import { materialPresetSetting } from './material-preset';
 
 function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
@@ -350,6 +352,7 @@ const glossinessSetting: SettingDefinition<number> = {
 export const SETTINGS = [
   buttonPositionSetting,
   glossinessSetting,
+  materialPresetSetting,
   keylightSetting,
   fillLightSetting,
   rimLightSetting,

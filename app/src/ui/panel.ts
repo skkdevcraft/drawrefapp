@@ -82,7 +82,18 @@ export class SettingsPanel {
         const updateLight = (control as any)._updateLight;
         if (updateLight) {
           updateLight(value);
-        } else if ('value' in control) {
+          return;
+        }
+
+        // Material preset controls expose selection update
+        const selectPreset = (control as any)._selectPreset;
+        if (selectPreset) {
+          selectPreset(value);
+          return;
+        }
+
+        // Standard controls use the value property
+        if ('value' in control) {
           (control as HTMLSelectElement).value = String(value);
         }
       }

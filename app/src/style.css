@@ -283,6 +283,85 @@ select.settings-control {
   padding-right: 36px;
 }
 
+/* ── Material Preset Cards ──────────────────────────── */
+
+.material-preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0;
+}
+
+.material-preset-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--font-sans);
+  min-height: 44px;
+}
+
+.material-preset-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+.material-preset-card:active {
+  transform: scale(0.97);
+}
+
+.material-preset-card:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.material-preset-card.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.material-preset-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity var(--transition-normal);
+}
+
+.material-preset-preview.has-thumbnail {
+  opacity: 1;
+}
+
+.material-preset-preview:not(.has-thumbnail) {
+  opacity: 0.5;
+}
+
+.material-preset-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.2;
+}
+
 /* ── View Presets ───────────────────────────────────── */
 
 .view-presets {
