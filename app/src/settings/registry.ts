@@ -209,6 +209,82 @@ const fillLightSetting: SettingDefinition<LightValue> = {
   },
 };
 
+/* ── Glossiness Setting ──────────────────────────────── */
+
+/**
+ * Controls the glossiness (shininess) of the model's surface.
+ *
+ * Maps to Three.js `roughness` on MeshStandardMaterial:
+ *   roughness = 1 - glossiness
+ *
+ * 0 = completely matte (roughness 1)
+ * 1 = mirror-like glossy (roughness 0)
+ */
+const glossinessSetting: SettingDefinition<number> = {
+  id: 'gloss',
+
+  label: 'Glossiness',
+
+  type: 'number',
+
+  defaultValue: 0.6,
+
+  serialize: v => String(v),
+
+  deserialize: raw => {
+    if (raw === null) return 0.6;
+    const n = parseFloat(raw);
+    if (isNaN(n)) return 0.6;
+    return Math.min(1, Math.max(0, n));
+  },
+
+  createControl(value, onChange) {
+    const container = document.createElement('div');
+    container.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+    `;
+
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = '0';
+    input.max = '1';
+    input.step = '0.01';
+    input.value = String(value);
+    input.style.cssText = `
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    `;
+
+    const display = document.createElement('span');
+    display.style.cssText = `
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      min-width: 28px;
+      text-align: right;
+    `;
+    display.textContent = value.toFixed(2);
+
+    input.oninput = () => {
+      const v = parseFloat(input.value);
+      display.textContent = v.toFixed(2);
+      onChange(v);
+    };
+
+    container.append(input, display);
+    return container;
+  },
+};
+
 /* ── Registry ──────────────────────────────────────── */
 
 /**
@@ -222,6 +298,7 @@ const fillLightSetting: SettingDefinition<LightValue> = {
  */
 export const SETTINGS = [
   buttonPositionSetting,
+  glossinessSetting,
   keylightSetting,
   fillLightSetting,
   // Future settings are added here — no other code changes needed.

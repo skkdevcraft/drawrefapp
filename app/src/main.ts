@@ -70,6 +70,7 @@ export interface ViewerAPI {
   requestRender: () => void;
   dispose: () => void;
   setModel: (model: THREE.Object3D) => void;
+  getModel: () => THREE.Object3D | null;
 }
 
 /* ── createViewer ──────────────────────────────────── */
@@ -195,6 +196,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
     requestRender,
     dispose,
     setModel,
+    getModel: () => currentModel,
   };
 }
 
@@ -246,6 +248,33 @@ const viewer = createViewer(canvas);
 /* ── 3–5. Load model → Normalize → Set model (fit camera) → Apply camera state ── */
 
 let currentModelName: string | null = null;
+let currentModelObject: THREE.Object3D | null = null;
+
+/**
+ * Applies the current glossiness setting to all MeshStandardMaterial
+ * instances on the given model by setting `roughness = 1 - glossiness`.
+ */
+function applyGlossinessToModel(model: THREE.Object3D): void {
+  const gloss = get('gloss') as number;
+  const roughness = 1 - gloss;
+
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      const mat = child.material;
+      if (Array.isArray(mat)) {
+        for (const m of mat) {
+          if (m instanceof THREE.MeshStandardMaterial) {
+            m.roughness = roughness;
+            m.needsUpdate = true;
+          }
+        }
+      } else if (mat instanceof THREE.MeshStandardMaterial) {
+        mat.roughness = roughness;
+        mat.needsUpdate = true;
+      }
+    }
+  });
+}
 
 /**
  * Loads the model from the URL-derived name, or falls back to the
@@ -253,8 +282,9 @@ let currentModelName: string | null = null;
  *
  * After loading:
  *   1. Normalize (centre, uniform scale)
- *   2. Replace the fallback in the scene (triggers auto-fit and render)
- *   3. Apply the URL's camera state, overriding the auto-fit position
+ *   2. Apply glossiness setting
+ *   3. Replace the fallback in the scene (triggers auto-fit and render)
+ *   4. Apply the URL's camera state, overriding the auto-fit position
  *
  * The UI (settings panel, resize handler, URL sync) is created after
  * loading completes (success or failure), so the settings panel is
@@ -265,6 +295,10 @@ loadModelFromName(modelName)
     // 3. Normalize
     normalizeModel(model, 1);
     currentModelName = modelName;
+    currentModelObject = model;
+
+    // 3b. Apply glossiness setting to all materials
+    applyGlossinessToModel(model);
 
     // 4. Replace fallback → fit camera → render
     viewer.setModel(model);
@@ -283,6 +317,8 @@ loadModelFromName(modelName)
     console.error('[main] Failed to load model:', err);
     // Fallback box remains visible — the viewer never starts empty.
     // currentModelName stays null, so URL sync omits the model param.
+    // Still track the fallback model so glossiness can be applied
+    currentModelObject = viewer.getModel();
   })
   .finally(() => {
     // 6–7. Create UI and start URL sync (always, even on load failure)
@@ -409,6 +445,28 @@ function createUI(): void {
     }
   });
 
+  /* ── Glossiness Sync ────────────────────────────── */
+
+  /**
+   * Applies the current glossiness setting to the loaded model.
+   */
+  function applyGlossiness(): void {
+    if (currentModelObject) {
+      applyGlossinessToModel(currentModelObject);
+      viewer.requestRender();
+    }
+  }
+
+  // Apply initial glossiness from URL state (already in store)
+  applyGlossiness();
+
+  // Subscribe to glossiness changes
+  const unsubGloss = subscribe((id) => {
+    if (id === 'gloss') {
+      applyGlossiness();
+    }
+  });
+
   /* ── Integrate cleanup into viewer.dispose ───────── */
 
   const origDispose = viewer.dispose.bind(viewer);
@@ -416,6 +474,7 @@ function createUI(): void {
     stopUrlSync();
     unsubKeyLight();
     unsubFillLight();
+    unsubGloss();
     window.removeEventListener('resize', onWindowResize);
     settingsPanel.dispose();
     origDispose();
