@@ -35,7 +35,7 @@ import { loadModelFromName } from './models/loader';
 import { normalizeModel } from './models/normalize';
 import { createFallbackCube } from './models/fallback';
 
-import { applyCameraState } from './camera/state';
+import { applyCameraState, getCameraState } from './camera/state';
 
 import { SETTINGS } from './settings/registry';
 import type { LightValue } from './settings/registry';
@@ -47,7 +47,7 @@ import { startUrlSync } from './url/state';
 import { SettingsPanel, type ViewerControls } from './ui/panel';
 
 import { applyMaterialPreset, type MaterialPreset } from './settings/material-preset';
-import { generateMaterialPreviews, invalidateModelPreviews } from './settings/material-preview';
+import { clearPreviewCache, generateMaterialPreviews, invalidateModelPreviews } from './settings/material-preview';
 
 /* ── Exposed API ──────────────────────────────────── */
 
@@ -256,29 +256,52 @@ let currentModelName: string | null = null;
 let currentModelObject: THREE.Object3D | null = null;
 
 /**
- * Applies the current glossiness setting to all MeshStandardMaterial
- * instances on the given model by setting `roughness = 1 - glossiness`.
+ * Applies the current glossiness setting to all materials
+ * (on Mesh descendants) that support a gloss/roughness parameter.
+ *
+ * - PBR materials: roughness = 1 - glossiness
+ * - Phong material: shininess = glossiness * MAX_SHININESS
+ * - Other materials are silently skipped.
  */
 function applyGlossinessToModel(model: THREE.Object3D): void {
-  const gloss = get('gloss') as number;
+  const gloss = get('gloss') as number;           // expects 0 (dull) … 1 (glossy)
   const roughness = 1 - gloss;
 
   model.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      const mat = child.material;
-      if (Array.isArray(mat)) {
-        for (const m of mat) {
-          if (m instanceof THREE.MeshStandardMaterial) {
-            m.roughness = roughness;
-            m.needsUpdate = true;
-          }
-        }
-      } else if (mat instanceof THREE.MeshStandardMaterial) {
-        mat.roughness = roughness;
-        mat.needsUpdate = true;
-      }
+    if (!(child instanceof THREE.Mesh)) return;
+
+    // Normalise to array
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+
+    for (const mat of materials) {
+      applyGlossinessToMaterial(mat, roughness, gloss);
     }
   });
+}
+
+/**
+ * Sets the roughness or shininess according to the material type.
+ */
+function applyGlossinessToMaterial(
+  material: THREE.Material,
+  roughness: number,   // 0 = glossy, 1 = dull (PBR)
+  gloss: number,       // 0 = dull, 1 = glossy
+): void {
+  const MAX_SHININESS = 100;
+
+  if (
+    material instanceof THREE.MeshStandardMaterial ||
+    material instanceof THREE.MeshPhysicalMaterial
+  ) {
+    material.roughness = roughness;
+    // Uniform change → NO needsUpdate required
+  } else if (material instanceof THREE.MeshPhongMaterial) {
+    material.shininess = Math.round(gloss * MAX_SHININESS);
+    // Also a uniform change – no needsUpdate
+  }
+  // Lambert, Basic, Toon, Matcap, etc. have no gloss → do nothing
 }
 
 /**
@@ -302,14 +325,14 @@ loadModelFromName(modelName)
     currentModelName = modelName;
     currentModelObject = model;
 
-    // 3b. Apply glossiness setting to all materials
-    applyGlossinessToModel(model);
-
     // 3c. Apply material preset (overrides color, roughness, metalness)
     const preset = get('material') as MaterialPreset;
     if (preset) {
       applyMaterialPreset(model, preset);
     }
+
+    // 3b. Apply glossiness setting to all materials
+    applyGlossinessToModel(model);
 
     // 4. Replace fallback → fit camera → render
     viewer.setModel(model);
@@ -529,17 +552,16 @@ function createUI(): void {
   /* ── Material Preview Thumbnails ──────────────────── */
 
   /**
-   * Generates preview thumbnails for all material presets using the
-   * current loaded model. Populates the material control preview cards.
+   * Generates preview thumbnails for all material presets by reloading
+   * the model from scratch using the same load → normalise pipeline
+   * as the main scene. Populates the material control preview cards.
    *
    * Thumbnails are generated asynchronously so the UI remains responsive.
-   * Cached thumbnails are reused across calls for the same model.
+   * Cached thumbnails are reused across calls for the same model name.
    */
   function generateThumbnails(): void {
-    const model = viewer.getModel();
-    if (!model) return;
-
-    generateMaterialPreviews(model, viewer.renderer).then((previews) => {
+    const camState = getCameraState(viewer.controls, viewer.camera);
+    generateMaterialPreviews(currentModelName, viewer.renderer, camState).then((previews) => {
       const materialContainer = document.querySelector(
         '[data-setting-id="material"]',
       );

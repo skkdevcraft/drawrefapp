@@ -132,7 +132,7 @@ export function applyMaterialPreset(
  * given preset, carrying over per-mesh attributes that should be
  * preserved (vertex colours, textures, side, transparency).
  */
-function createMaterialForPreset(
+export function createMaterialForPreset(
   mat: PresetMaterial,
   mesh: THREE.Mesh,
 ): THREE.Material {

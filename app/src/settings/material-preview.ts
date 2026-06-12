@@ -6,7 +6,13 @@
  * using a fixed camera and fixed lighting so that materials can be
  * compared consistently.
  *
- * The generated thumbnails are cached keyed by model identity and
+ * Instead of cloning the already-loaded scene model, this module
+ * reloads the model from scratch (using the same load → normalise
+ * pipeline as the main scene) and renders it into an off-screen
+ * render target. This avoids sharing GPU resources with the live
+ * scene and keeps thumbnail generation self-contained.
+ *
+ * The generated thumbnails are cached keyed by model name and
  * preset name, so they are only regenerated when the model changes
  * or preset definitions change.
  *
@@ -15,7 +21,11 @@
 
 import * as THREE from 'three';
 import type { MaterialPreset } from './material-preset';
-import { getPresetMaterial, PRESET_NAMES } from './material-preset';
+import { getPresetMaterial, PRESET_NAMES, createMaterialForPreset } from './material-preset';
+import { loadModelFromName } from '../models/loader';
+import { normalizeModel } from '../models/normalize';
+import { createFallbackCube } from '../models/fallback';
+import type { CameraState } from '../camera/state';
 
 /* ── Constants ─────────────────────────────────────── */
 
@@ -23,24 +33,30 @@ import { getPresetMaterial, PRESET_NAMES } from './material-preset';
 const THUMB_SIZE = 120;
 
 /** Background color for the preview render. */
-const PREVIEW_BG = 0x2a2a2e;
+// const PREVIEW_BG = 0x2a2a2e;
+const PREVIEW_BG = 0xffffff;
 
 /* ── Preview Camera Setup ──────────────────────────── */
 
 /**
- * Creates a fixed camera for preview rendering.
+ * Creates a camera for preview rendering positioned using the current
+ * camera state (theta = azimuth, phi = elevation, radius = distance).
  *
- * View: Three-Quarter View
- *   - Azimuth: 45°
- *   - Elevation: 30°
- *   - Distance: computed to fit a unit-radius model comfortably
+ * When no camera state is provided, falls back to a fixed three-quarter
+ * view (azimuth 45°, elevation 30°, distance 3.5) so thumbnails are
+ * consistent before the user interacts with the scene.
  */
-function createPreviewCamera(aspect: number = 1): THREE.PerspectiveCamera {
+function createPreviewCamera(
+  aspect: number = 1,
+  camState?: CameraState,
+): THREE.PerspectiveCamera {
   const camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 20);
 
-  const azRad = 45 * (Math.PI / 180);
-  const elRad = 30 * (Math.PI / 180);
-  const dist = 3.5;
+  const azRad =
+    camState !== undefined ? camState.theta * (Math.PI / 180) : 45 * (Math.PI / 180);
+  const elRad =
+    camState !== undefined ? camState.phi * (Math.PI / 180) : 30 * (Math.PI / 180);
+  const dist = camState !== undefined ? camState.radius : 3.5;
 
   camera.position.set(
     dist * Math.cos(elRad) * Math.sin(azRad),
@@ -69,7 +85,7 @@ function createPreviewLights(): THREE.Light[] {
   const lights: THREE.Light[] = [];
 
   // Key light
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 3.5);
   const kAzRad = 45 * (Math.PI / 180);
   const kElRad = 45 * (Math.PI / 180);
   keyLight.position.set(
@@ -85,72 +101,10 @@ function createPreviewLights(): THREE.Light[] {
   lights.push(fillLight);
 
   // Ambient light for base illumination
-  const ambient = new THREE.AmbientLight(0xffffff, 0.1);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
   lights.push(ambient);
 
   return lights;
-}
-
-/* ── Model Cloning ─────────────────────────────────── */
-
-/**
- * Creates a shallow clone of the model where geometry is shared but
- * each Mesh gets a fresh material array. This avoids duplicating
- * large vertex buffers while still letting us assign unique materials.
- *
- * The clone preserves the full transform hierarchy of the original.
- */
-function cloneForPreview(model: THREE.Object3D): THREE.Group {
-  const root = new THREE.Group();
-  root.name = 'preview-clone-root';
-
-  // Map original objects to their clones to preserve transforms
-  const cloneMap = new Map<THREE.Object3D, THREE.Object3D>();
-
-  model.traverse((child) => {
-    let clone: THREE.Object3D;
-
-    if (child instanceof THREE.Mesh) {
-      const mesh = child as THREE.Mesh;
-      clone = new THREE.Mesh(mesh.geometry, []);
-      clone.castShadow = true;
-      clone.receiveShadow = true;
-    } else if (child instanceof THREE.Group) {
-      clone = new THREE.Group();
-    } else {
-      // Skip non-Mesh, non-Group objects (lights, helpers, etc.)
-      return;
-    }
-
-    // Copy transform
-    clone.position.copy(child.position);
-    clone.quaternion.copy(child.quaternion);
-    clone.scale.copy(child.scale);
-    clone.name = child.name;
-
-    cloneMap.set(child, clone);
-  });
-
-  // Rebuild hierarchy
-  model.traverse((child) => {
-    const clone = cloneMap.get(child);
-    if (!clone) return;
-
-    if (child === model) {
-      // Attach to root
-      clone.position.set(0, 0, 0);
-      clone.quaternion.identity();
-      clone.scale.set(1, 1, 1);
-      root.add(clone);
-    } else {
-      const parentClone = cloneMap.get(child.parent!);
-      if (parentClone) {
-        parentClone.add(clone);
-      }
-    }
-  });
-
-  return root;
 }
 
 /* ── Thumbnail Generation ──────────────────────────── */
@@ -158,37 +112,43 @@ function cloneForPreview(model: THREE.Object3D): THREE.Group {
 /**
  * Cache of generated thumbnails.
  *
- * Key format: `${modelUid}:${presetName}`
+ * Key format: `${cacheKey}:${presetName}`
+ *   cacheKey = modelName (or `'__fallback__'` when null)
  * Value: data URL of the PNG thumbnail
  */
 const thumbnailCache = new Map<string, string>();
 
-let cachedModelUid: string | null = null;
+let cachedModelKey: string | null = null;
 
 /**
  * Generates thumbnail previews for all material presets.
  *
- * Renders each preset variant into an off-screen canvas and returns
- * a Map from preset name to data URL.
+ * Reloads the model from scratch using the same {@link loadModelFromName}
+ * → {@link normalizeModel} pipeline as the main scene, then renders
+ * each preset variant into an off-screen render target.
  *
- * Thumbnails are cached so they are only regenerated when the model
- * reference changes.
+ * Thumbnails are cached by model name so they are only regenerated
+ * when the model changes.
  *
- * @param model    - The current scene model (will be cloned for rendering)
- * @param renderer - The main WebGLRenderer (used for off-screen rendering)
+ * @param modelName - The model identifier (e.g. `"skull3.obj"`), or
+ *                    `null` to use the fallback cube.
+ * @param renderer  - The main WebGLRenderer (used for off-screen rendering)
+ * @param camState  - Current camera state to use for the preview viewpoint.
+ *                    When omitted, a fixed three-quarter view is used.
  * @returns A Map of preset → data URL
  */
 export async function generateMaterialPreviews(
-  model: THREE.Object3D,
+  modelName: string | null,
   renderer: THREE.WebGLRenderer,
+  camState?: CameraState,
 ): Promise<Map<MaterialPreset, string>> {
-  const modelUid = model.uuid;
+  const cacheKey = modelName ?? '__fallback__';
 
   // If we already have cached thumbnails for this model, return them
-  if (cachedModelUid === modelUid) {
+  if (cachedModelKey === cacheKey) {
     const cached = new Map<MaterialPreset, string>();
     for (const preset of PRESET_NAMES) {
-      const dataUrl = thumbnailCache.get(`${modelUid}:${preset}`);
+      const dataUrl = thumbnailCache.get(`${cacheKey}:${preset}`);
       if (dataUrl) {
         cached.set(preset, dataUrl);
       }
@@ -201,23 +161,38 @@ export async function generateMaterialPreviews(
   // Yield to the main thread so the UI stays responsive
   await new Promise((resolve) => setTimeout(resolve, 0));
 
+  /* ── Reload the model fresh (same pipeline as main scene) ── */
+
+  let model: THREE.Object3D;
+  if (modelName) {
+    model = await loadModelFromName(modelName);
+  } else {
+    model = createFallbackCube();
+  }
+  normalizeModel(model, 1);
+
   const result = new Map<MaterialPreset, string>();
 
-  // Save the current render target so we can restore it
+  // Save renderer state so we can restore it after off-screen rendering
   const prevRenderTarget = renderer.getRenderTarget();
   const prevAutoClear = renderer.autoClear;
+  const prevViewport = new THREE.Vector4();
+  renderer.getViewport(prevViewport);
+  const prevScissor = new THREE.Vector4();
+  renderer.getScissor(prevScissor);
+  const prevScissorTest = renderer.getScissorTest();
 
-  // Off-screen render target
-  const target = new THREE.WebGLRenderTarget(THUMB_SIZE, THUMB_SIZE, {
-    samples: 4, // MSAA for nicer thumbnails
-  });
+  // Off-screen render target (no MSAA — readRenderTargetPixels is
+  // unreliable with MSAA across GPU/driver combinations, and 120×120
+  // thumbnails don't need it — the CSS display will smooth them).
+  const target = new THREE.WebGLRenderTarget(THUMB_SIZE, THUMB_SIZE);
 
   // Preview scene
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(PREVIEW_BG);
 
-  // Camera
-  const camera = createPreviewCamera();
+  // Camera (use current scene camera orientation when available)
+  const camera = createPreviewCamera(1, camState);
 
   // Lights
   const lights = createPreviewLights();
@@ -225,39 +200,39 @@ export async function generateMaterialPreviews(
     scene.add(light);
   }
 
-  // Clone the model once (geometry is shared)
-  const cloneRoot = cloneForPreview(model);
-  scene.add(cloneRoot);
+  // Add the freshly-loaded model to the preview scene
+  scene.add(model);
 
   // For each preset, apply the material and render
   for (const preset of PRESET_NAMES) {
     const mat = getPresetMaterial(preset);
 
-    // Apply preset material to all meshes in the clone, using the
-    // same material class (Standard / Physical) as the main viewer
-    cloneRoot.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        const params: THREE.MeshStandardMaterialParameters = {
-          color: mat.color,
-          roughness: mat.roughness,
-          metalness: mat.metalness,
-        };
-
-        switch (mat.materialClass) {
-          case 'physical':
-            child.material = new THREE.MeshPhysicalMaterial(params);
-            break;
-          case 'standard':
-          default:
-            child.material = new THREE.MeshStandardMaterial(params);
-            break;
+    // Dispose previous preset materials
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => m.dispose());
+        } else {
+          child.material.dispose();
         }
+      }
+    });
+
+    // Apply preset material to all meshes, using the same material
+    // creation path as the main viewer (carries over vertexColors,
+    // map, side, transparent, opacity from the original material).
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.material = createMaterialForPreset(mat, child);
       }
     });
 
     // Render to off-screen target
     renderer.autoClear = true;
     renderer.setRenderTarget(target);
+    renderer.setViewport(0, 0, THUMB_SIZE, THUMB_SIZE);
+    renderer.setScissor(0, 0, THUMB_SIZE, THUMB_SIZE);
+    renderer.setScissorTest(false);
     renderer.render(scene, camera);
 
     // Read pixels (flipped Y — Three.js uses bottom-left origin)
@@ -279,20 +254,33 @@ export async function generateMaterialPreviews(
     result.set(preset, dataUrl);
 
     // Cache it
-    thumbnailCache.set(`${modelUid}:${preset}`, dataUrl);
+    thumbnailCache.set(`${cacheKey}:${preset}`, dataUrl);
   }
 
-  // Clean up preview scene
-  scene.remove(cloneRoot);
+  // Clean up preview scene and dispose the loaded model
+  scene.remove(model);
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose();
+      if (Array.isArray(child.material)) {
+        child.material.forEach((m) => m.dispose());
+      } else {
+        child.material.dispose();
+      }
+    }
+  });
   scene.clear();
   target.dispose();
 
-  // Restore renderer state
+  // Restore renderer state (viewport, scissor, and render target)
   renderer.setRenderTarget(prevRenderTarget);
+  renderer.setViewport(prevViewport);
+  renderer.setScissor(prevScissor);
+  renderer.setScissorTest(prevScissorTest);
   renderer.autoClear = prevAutoClear;
 
-  // Update cached model UID
-  cachedModelUid = modelUid;
+  // Update cached model key
+  cachedModelKey = cacheKey;
 
   return result;
 }
@@ -303,7 +291,7 @@ export async function generateMaterialPreviews(
  */
 export function clearPreviewCache(): void {
   thumbnailCache.clear();
-  cachedModelUid = null;
+  cachedModelKey = null;
 }
 
 /* ── Pixel Helpers ─────────────────────────────────── */
@@ -355,5 +343,5 @@ function pixelsToDataUrl(
  */
 export function invalidateModelPreviews(): void {
   thumbnailCache.clear();
-  cachedModelUid = null;
+  cachedModelKey = null;
 }
