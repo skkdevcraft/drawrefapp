@@ -209,6 +209,57 @@ const fillLightSetting: SettingDefinition<LightValue> = {
   },
 };
 
+/* ── Rim Light Setting ──────────────────────────── */
+
+/**
+ * Controls the rim/back directional light parameters.
+ *
+ * Uses the same LightValue type as the key light.
+ * Defaults position the light directly behind and slightly above
+ * the model (azimuth 180°, elevation 30°) to create a classic
+ * rim light effect.
+ */
+const rimLightSetting: SettingDefinition<LightValue> = {
+  id: 'rim',
+  label: 'Back Light',
+  type: 'light',
+
+  defaultValue: {
+    azimuth: 180,
+    elevation: 30,
+    intensity: 0.3,
+    softness: 0,
+  },
+
+  serialize(value) {
+    const { azimuth, elevation, intensity, softness } = value;
+    return `${azimuth},${elevation},${intensity},${softness}`;
+  },
+
+  deserialize(raw) {
+    if (raw === null) {
+      return { ...rimLightSetting.defaultValue };
+    }
+
+    const parts = raw.split(',').map((s) => s.trim()).map(Number);
+
+    if (parts.length !== 4 || parts.some(isNaN)) {
+      return { ...rimLightSetting.defaultValue };
+    }
+
+    return {
+      azimuth: clamp(parts[0], 0, 360),
+      elevation: clamp(parts[1], 0, 90),
+      intensity: clamp(parts[2], 0, 5),
+      softness: clamp(parts[3], 0, 1),
+    };
+  },
+
+  createControl(value, onChange) {
+    return createLightControl(value, onChange);
+  },
+};
+
 /* ── Glossiness Setting ──────────────────────────────── */
 
 /**
@@ -301,5 +352,6 @@ export const SETTINGS = [
   glossinessSetting,
   keylightSetting,
   fillLightSetting,
+  rimLightSetting,
   // Future settings are added here — no other code changes needed.
 ] as const;

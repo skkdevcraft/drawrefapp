@@ -27,7 +27,7 @@ export function createScene(): THREE.Scene {
  * - Fill directional: cool fill from upper-left-back
  * - Rim directional: back rim light from below
  */
-export function addLights(scene: THREE.Scene): { keyLight: THREE.DirectionalLight; fillLight: THREE.DirectionalLight } {
+export function addLights(scene: THREE.Scene): { keyLight: THREE.DirectionalLight; fillLight: THREE.DirectionalLight; rimLight: THREE.DirectionalLight } {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.01);
   scene.add(ambientLight);
 
@@ -57,7 +57,7 @@ export function addLights(scene: THREE.Scene): { keyLight: THREE.DirectionalLigh
   rimLight.position.set(0, -6, -4);
   scene.add(rimLight);
 
-  return { keyLight, fillLight };
+  return { keyLight, fillLight, rimLight };
 }
 
 /**
@@ -127,6 +127,33 @@ export function updateFillLight(
   // Softness not applicable to non-shadow-casting fill, but we keep the
   // interface consistent — softness is accepted but does nothing here.
   void softness;
+}
+
+/**
+ * Updates the rim directional light based on the LightValue settings.
+ *
+ * Converts azimuth/elevation spherical coordinates to a Cartesian position
+ * aimed at the origin. Intensity is applied directly.
+ */
+export function updateRimLight(
+  rimLight: THREE.DirectionalLight,
+  lightValue: LightValue,
+): void {
+  const { azimuth, elevation, intensity, softness } = lightValue;
+
+  // Spherical to Cartesian — azimuth around Y, elevation up from horizon
+  const azRad = azimuth * (Math.PI / 180);
+  const elRad = elevation * (Math.PI / 180);
+
+  const distance = 10;
+  const x = distance * Math.cos(elRad) * Math.sin(azRad);
+  const y = distance * Math.sin(elRad);
+  const z = distance * Math.cos(elRad) * Math.cos(azRad);
+
+  rimLight.position.set(x, y, z);
+  rimLight.intensity = intensity;
+
+  void softness; // reserved for future softness support on rim light
 }
 
 /**

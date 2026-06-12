@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { createRenderer } from './viewer/renderer';
-import { createScene, addLights, updateBackground, updateKeyLight, updateFillLight } from './viewer/scene';
+import { createScene, addLights, updateBackground, updateKeyLight, updateFillLight, updateRimLight } from './viewer/scene';
 import { createCamera, fitCamera } from './viewer/camera';
 import { createControls } from './viewer/controls';
 import { createRenderLoop } from './viewer/render-loop';
@@ -55,6 +55,7 @@ export interface ViewerAPI {
   controls: OrbitControls;
   keyLight: THREE.DirectionalLight;
   fillLight: THREE.DirectionalLight;
+  rimLight: THREE.DirectionalLight;
   resize: () => void;
   /** Refits the camera to the current model with the given target radius. */
   fitCamera: (targetRadius?: number) => void;
@@ -98,7 +99,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
 
   /* ── Lighting ─────────────────────────────────── */
 
-  const { keyLight, fillLight } = addLights(scene);
+  const { keyLight, fillLight, rimLight } = addLights(scene);
 
   /* ── Fallback Model ────────────────────────────── */
 
@@ -191,6 +192,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
     controls,
     keyLight,
     fillLight,
+    rimLight,
     resize: onResize,
     fitCamera: fitCameraToTarget,
     requestRender,
@@ -445,6 +447,29 @@ function createUI(): void {
     }
   });
 
+  /* ── Rim Light Sync ────────────────────────────── */
+
+  /**
+   * Applies the current rim light setting to the scene.
+   */
+  function applyRimLight(): void {
+    const v = get('rim') as LightValue;
+    if (v) {
+      updateRimLight(viewer.rimLight, v);
+      viewer.requestRender();
+    }
+  }
+
+  // Apply initial rim light from URL state
+  applyRimLight();
+
+  // Subscribe to rim light changes
+  const unsubRimLight = subscribe((id) => {
+    if (id === 'rim') {
+      applyRimLight();
+    }
+  });
+
   /* ── Glossiness Sync ────────────────────────────── */
 
   /**
@@ -474,6 +499,7 @@ function createUI(): void {
     stopUrlSync();
     unsubKeyLight();
     unsubFillLight();
+    unsubRimLight();
     unsubGloss();
     window.removeEventListener('resize', onWindowResize);
     settingsPanel.dispose();
