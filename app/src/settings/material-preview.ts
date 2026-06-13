@@ -204,7 +204,7 @@ let cachedModelKey: string | null = null;
 export async function generateMaterialPreviews(
   modelName: string | null,
   renderer: THREE.WebGLRenderer,
-  camState?: CameraState,
+  _camState?: CameraState,
 ): Promise<Map<MaterialPreset, string>> {
   const cacheKey = modelName ?? '__fallback__';
 
