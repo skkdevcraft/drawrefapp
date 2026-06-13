@@ -39,31 +39,95 @@ const PREVIEW_BG = 0xffffff;
 /* ── Preview Camera Setup ──────────────────────────── */
 
 /**
- * Creates a camera for preview rendering positioned using the current
- * camera state (theta = azimuth, phi = elevation, radius = distance).
+ * Creates a PerspectiveCamera framed to show `model` in its entirety.
  *
- * When no camera state is provided, falls back to a fixed three-quarter
- * view (azimuth 45°, elevation 30°, distance 3.5) so thumbnails are
- * consistent before the user interacts with the scene.
+ * Strategy
+ * --------
+ * 1. Compute the world-space axis-aligned bounding box (AABB) of every mesh
+ *    in the hierarchy, so we never rely on the object's origin or transform.
+ * 2. Derive the bounding sphere from that AABB (centre + radius).
+ * 3. Place the camera on a unit sphere around that centre at the requested
+ *    azimuth / elevation, then push it back far enough that the sphere fits
+ *    inside the camera frustum with a small breathing margin.
+ * 4. Point the camera at the sphere centre and align "up" with world Y.
  */
 function createPreviewCamera(
-  aspect: number = 1,
-  camState?: CameraState,
+  model: THREE.Object3D,
+  aspect = 1,
+  azimuthDeg = 45,
+  elevationDeg = 30,
 ): THREE.PerspectiveCamera {
-  const camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 20);
+  // ── 1. World-space AABB ────────────────────────────────────────────────────
+  const box = new THREE.Box3().setFromObject(model);
+  if (box.isEmpty()) {
+    box.set(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1));
+  }
 
-  const azRad =
-    camState !== undefined ? camState.theta * (Math.PI / 180) : 45 * (Math.PI / 180);
-  const elRad =
-    camState !== undefined ? camState.phi * (Math.PI / 180) : 30 * (Math.PI / 180);
-  const dist = camState !== undefined ? camState.radius : 3.5;
+  // ── 2. Bounding sphere from AABB ──────────────────────────────────────────
+  const sphere = new THREE.Sphere();
+  box.getBoundingSphere(sphere);
+  const { center, radius } = sphere;
 
-  camera.position.set(
-    dist * Math.cos(elRad) * Math.sin(azRad),
-    dist * Math.sin(elRad),
-    dist * Math.cos(elRad) * Math.cos(azRad),
+  // ── 3. Camera direction ───────────────────────────────────────────────────
+  const azRad = THREE.MathUtils.degToRad(azimuthDeg);
+  const elRad = THREE.MathUtils.degToRad(elevationDeg);
+
+  // Unit vector FROM center TOWARD camera (Y-up spherical coords)
+  const camDir = new THREE.Vector3(
+    Math.cos(elRad) * Math.sin(azRad),
+    Math.sin(elRad),
+    Math.cos(elRad) * Math.cos(azRad),
   );
-  camera.lookAt(0, 0, 0);
+
+  // ── 4. FOV and fitting ────────────────────────────────────────────────────
+  const fovDeg = 45;
+  const fovRad = THREE.MathUtils.degToRad(fovDeg);
+
+  const halfFovV = fovRad / 2;
+  const halfFovH = Math.atan(Math.tan(halfFovV) * aspect);
+  const fittingHalfAngle = Math.min(halfFovV, halfFovH);
+
+  // ── 5. Correct perspective-projected center offset ────────────────────────
+  //
+  // A sphere of radius `r` at distance `d` from the camera does NOT project
+  // its geometric center onto the image center. The visible silhouette is a
+  // circle whose screen-center is closer to the camera than `center`, because
+  // the near half of the sphere is magnified more than the far half.
+  //
+  // The silhouette ring lies on a plane at distance:
+  //   d_sil = d - r²/d        (where d = distance from camera to sphere center)
+  //
+  // So the apparent screen center of the sphere is the projection of a point
+  // that is shifted TOWARD the camera by r²/d along camDir.
+  //
+  // To compensate: instead of pointing the camera at `center`, we point it at
+  // a corrected target that is shifted AWAY from the camera by r²/d,
+  // so the silhouette ring projects exactly to screen center.
+  //
+  // We compute this iteratively (one refinement is enough in practice):
+
+  // Initial distance (no correction yet)
+  const distance = (radius / Math.sin(fittingHalfAngle)) * 1.1;
+
+  // Silhouette shift along camDir: the silhouette center is at d_sil = d - r²/d
+  // from the camera, meaning it's r²/d closer than `center`.
+  // To make the silhouette hit screen-center, shift the lookat target
+  // AWAY from camera by the same amount.
+  const silhouetteOffset = (radius * radius) / distance;
+  const correctedTarget = center.clone().addScaledVector(camDir, silhouetteOffset);
+
+  // Recompute distance from camera to correctedTarget (nearly identical, one pass is fine)
+  const cameraPosition = correctedTarget.clone().addScaledVector(camDir, distance);
+
+  // ── 6. Near / far planes ──────────────────────────────────────────────────
+  const near = Math.max(distance - radius * 1.2, distance * 0.001);
+  const far  = distance + radius * 1.2;
+
+  // ── 7. Assemble camera ────────────────────────────────────────────────────
+  const camera = new THREE.PerspectiveCamera(fovDeg, aspect, near, far);
+  camera.position.copy(cameraPosition);
+  camera.lookAt(correctedTarget);
+  camera.updateProjectionMatrix();
 
   return camera;
 }
@@ -192,13 +256,17 @@ export async function generateMaterialPreviews(
   scene.background = new THREE.Color(PREVIEW_BG);
 
   // Camera (use current scene camera orientation when available)
-  const camera = createPreviewCamera(1, camState);
+  const camera = createPreviewCamera(model, 1);
 
   // Lights
   const lights = createPreviewLights();
   for (const light of lights) {
     scene.add(light);
   }
+
+  // const box = new THREE.Box3().setFromObject(model);
+  // const helper = new THREE.Box3Helper(box, 0xff0000);
+  // scene.add(helper);
 
   // Add the freshly-loaded model to the preview scene
   scene.add(model);
