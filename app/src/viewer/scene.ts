@@ -2,60 +2,107 @@
  * Scene — creates and configures the Three.js scene.
  *
  * Responsibilities:
- *  - Create the Scene with a neutral dark background
- *  - Add lighting (ambient, directional key/fill/rim)
+ *  - Create the Scene with a configurable background
+ *  - Add lighting (ambient, directional key/fill/rim) parameterized by settings
  *  - Update background when the OS colour scheme changes
+ *  - Update individual lights in-place from LightValue settings
  */
 
 import * as THREE from 'three';
 import type { LightValue } from '../settings/registry';
 
+export interface LightSet {
+  keyLight: THREE.DirectionalLight;
+  fillLight: THREE.DirectionalLight;
+  rimLight: THREE.DirectionalLight;
+}
+
+export interface LightsOptions {
+  keylight?: LightValue;
+  fill?: LightValue;
+  rim?: LightValue;
+  enableShadows?: boolean;
+}
+
 /**
- * Creates an empty Scene with a neutral dark background.
+ * Creates an empty Scene with the given background colour.
+ * Falls back to '#111111' when omitted.
  */
-export function createScene(): THREE.Scene {
+export function createScene(background?: string): THREE.Scene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#111111');
+  scene.background = new THREE.Color(background ?? '#111111');
   return scene;
 }
 
 /**
- * Adds lighting to the scene.
+ * Adds lighting to the scene, optionally positioned from LightValue settings.
  *
- * - Ambient: soft fill
- * - Key directional: main light from upper-right-front
- * - Fill directional: cool fill from upper-left-back
- * - Rim directional: back rim light from below
+ * Always adds an ambient light (0xffffff, 0.2).
+ *
+ * When light settings are provided the lights are positioned immediately;
+ * otherwise they use hard-coded defaults and the caller is expected to
+ * call `updateKeyLight` / `updateFillLight` / `updateRimLight` later.
+ *
+ * Shadow-map setup on the key light is gated behind `enableShadows`
+ * (defaults to `false` so thumbnail scenes stay cheap).
  */
-export function addLights(scene: THREE.Scene): { keyLight: THREE.DirectionalLight; fillLight: THREE.DirectionalLight; rimLight: THREE.DirectionalLight } {
+export function addLights(
+  scene: THREE.Scene,
+  options?: LightsOptions,
+): LightSet {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
   scene.add(ambientLight);
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-  keyLight.position.set(5, 8, 6);
-  keyLight.castShadow = true;
+  const keyLight = new THREE.DirectionalLight(
+    0xffffff,
+    options?.keylight?.intensity ?? 1.2,
+  );
+  const fillLight = new THREE.DirectionalLight(
+    0x8ab4f8,
+    options?.fill?.intensity ?? 0.4,
+  );
+  const rimLight = new THREE.DirectionalLight(
+    0xffffff,
+    options?.rim?.intensity ?? 0.3,
+  );
 
-  // Shadow camera sized for a model normalized to radius ~1
-  const shadowSize = 4;
-  keyLight.shadow.camera.left = -shadowSize;
-  keyLight.shadow.camera.right = shadowSize;
-  keyLight.shadow.camera.top = shadowSize;
-  keyLight.shadow.camera.bottom = -shadowSize;
-  keyLight.shadow.camera.near = 0.5;
-  keyLight.shadow.camera.far = 20;
-  keyLight.shadow.mapSize.set(1024, 1024);
-  keyLight.shadow.radius = 0.5; // default softness for half (0.5)
-  keyLight.shadow.bias = -0.001;
+  // Shadow setup (only when requested – e.g. main viewer)
+  if (options?.enableShadows) {
+    keyLight.castShadow = true;
+    const shadowSize = 4;
+    keyLight.shadow.camera.left = -shadowSize;
+    keyLight.shadow.camera.right = shadowSize;
+    keyLight.shadow.camera.top = shadowSize;
+    keyLight.shadow.camera.bottom = -shadowSize;
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 20;
+    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.radius = 0.5;
+    keyLight.shadow.bias = -0.001;
+  }
 
   scene.add(keyLight);
-
-  const fillLight = new THREE.DirectionalLight(0x8ab4f8, 0.4);
-  fillLight.position.set(-4, 2, -3);
   scene.add(fillLight);
-
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
-  rimLight.position.set(0, -6, -4);
   scene.add(rimLight);
+
+  // Position lights from settings when provided, otherwise use defaults
+  if (options?.keylight) {
+    updateKeyLight(keyLight, options.keylight);
+  } else {
+    keyLight.position.set(5, 8, 6);
+  }
+
+  if (options?.fill) {
+    updateFillLight(fillLight, options.fill);
+  } else {
+    fillLight.position.set(-4, 2, -3);
+  }
+
+  if (options?.rim) {
+    updateRimLight(rimLight, options.rim);
+  } else {
+    rimLight.position.set(0, -6, -4);
+  }
 
   return { keyLight, fillLight, rimLight };
 }

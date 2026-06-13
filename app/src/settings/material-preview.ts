@@ -3,28 +3,32 @@
  *
  * For each material preset, renders a small thumbnail of the model
  * with that preset's material applied. Thumbnails are generated
- * using a fixed camera and fixed lighting so that materials can be
- * compared consistently.
+ * using the **same scene composition** as the main viewer so that
+ * lighting, background, glossiness, and camera angle match the
+ * user's current settings exactly.
+ *
+ * Thumbnails differ from the main scene only in:
+ *   - Material preset (varies per thumbnail)
+ *   - No shadows (off-screen render target)
+ *   - Square aspect ratio (1:1)
  *
  * Instead of cloning the already-loaded scene model, this module
  * reloads the model from scratch (using the same load → normalise
  * pipeline as the main scene) and renders it into an off-screen
- * render target. This avoids sharing GPU resources with the live
- * scene and keeps thumbnail generation self-contained.
- *
- * The generated thumbnails are cached keyed by model name and
- * preset name, so they are only regenerated when the model changes
- * or preset definitions change.
+ * render target.
  *
  * (See docs/004.material.md → Preview Generation)
  */
 
 import * as THREE from 'three';
+import type { LightValue } from './registry';
 import type { MaterialPreset } from './material-preset';
-import { getPresetMaterial, PRESET_NAMES, createMaterialForPreset } from './material-preset';
+import { PRESET_NAMES } from './material-preset';
 import { loadModelFromName } from '../models/loader';
 import { normalizeModel } from '../models/normalize';
 import { createFallbackCube } from '../models/fallback';
+import { composeScene } from '../viewer/composition';
+import { get } from './store';
 import type { CameraState } from '../camera/state';
 
 /* ── Constants ─────────────────────────────────────── */
@@ -32,146 +36,7 @@ import type { CameraState } from '../camera/state';
 /** Thumbnail size in pixels (square). */
 const THUMB_SIZE = 120;
 
-/** Background color for the preview render. */
-// const PREVIEW_BG = 0x2a2a2e;
-const PREVIEW_BG = 0xffffff;
-
-/* ── Preview Camera Setup ──────────────────────────── */
-
-/**
- * Creates a PerspectiveCamera framed to show `model` in its entirety.
- *
- * Strategy
- * --------
- * 1. Compute the world-space axis-aligned bounding box (AABB) of every mesh
- *    in the hierarchy, so we never rely on the object's origin or transform.
- * 2. Derive the bounding sphere from that AABB (centre + radius).
- * 3. Place the camera on a unit sphere around that centre at the requested
- *    azimuth / elevation, then push it back far enough that the sphere fits
- *    inside the camera frustum with a small breathing margin.
- * 4. Point the camera at the sphere centre and align "up" with world Y.
- */
-function createPreviewCamera(
-  model: THREE.Object3D,
-  aspect = 1,
-  azimuthDeg = 45,
-  elevationDeg = 30,
-): THREE.PerspectiveCamera {
-  // ── 1. World-space AABB ────────────────────────────────────────────────────
-  const box = new THREE.Box3().setFromObject(model);
-  if (box.isEmpty()) {
-    box.set(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1));
-  }
-
-  // ── 2. Bounding sphere from AABB ──────────────────────────────────────────
-  const sphere = new THREE.Sphere();
-  box.getBoundingSphere(sphere);
-  const { center, radius } = sphere;
-
-  // ── 3. Camera direction ───────────────────────────────────────────────────
-  const azRad = THREE.MathUtils.degToRad(azimuthDeg);
-  const elRad = THREE.MathUtils.degToRad(elevationDeg);
-
-  // Unit vector FROM center TOWARD camera (Y-up spherical coords)
-  const camDir = new THREE.Vector3(
-    Math.cos(elRad) * Math.sin(azRad),
-    Math.sin(elRad),
-    Math.cos(elRad) * Math.cos(azRad),
-  );
-
-  // ── 4. FOV and fitting ────────────────────────────────────────────────────
-  const fovDeg = 45;
-  const fovRad = THREE.MathUtils.degToRad(fovDeg);
-
-  const halfFovV = fovRad / 2;
-  const halfFovH = Math.atan(Math.tan(halfFovV) * aspect);
-  const fittingHalfAngle = Math.min(halfFovV, halfFovH);
-
-  // ── 5. Correct perspective-projected center offset ────────────────────────
-  //
-  // A sphere of radius `r` at distance `d` from the camera does NOT project
-  // its geometric center onto the image center. The visible silhouette is a
-  // circle whose screen-center is closer to the camera than `center`, because
-  // the near half of the sphere is magnified more than the far half.
-  //
-  // The silhouette ring lies on a plane at distance:
-  //   d_sil = d - r²/d        (where d = distance from camera to sphere center)
-  //
-  // So the apparent screen center of the sphere is the projection of a point
-  // that is shifted TOWARD the camera by r²/d along camDir.
-  //
-  // To compensate: instead of pointing the camera at `center`, we point it at
-  // a corrected target that is shifted AWAY from the camera by r²/d,
-  // so the silhouette ring projects exactly to screen center.
-  //
-  // We compute this iteratively (one refinement is enough in practice):
-
-  // Initial distance (no correction yet)
-  const distance = (radius / Math.sin(fittingHalfAngle)) * 1.1;
-
-  // Silhouette shift along camDir: the silhouette center is at d_sil = d - r²/d
-  // from the camera, meaning it's r²/d closer than `center`.
-  // To make the silhouette hit screen-center, shift the lookat target
-  // AWAY from camera by the same amount.
-  const silhouetteOffset = (radius * radius) / distance;
-  const correctedTarget = center.clone().addScaledVector(camDir, silhouetteOffset);
-
-  // Recompute distance from camera to correctedTarget (nearly identical, one pass is fine)
-  const cameraPosition = correctedTarget.clone().addScaledVector(camDir, distance);
-
-  // ── 6. Near / far planes ──────────────────────────────────────────────────
-  const near = Math.max(distance - radius * 1.2, distance * 0.001);
-  const far  = distance + radius * 1.2;
-
-  // ── 7. Assemble camera ────────────────────────────────────────────────────
-  const camera = new THREE.PerspectiveCamera(fovDeg, aspect, near, far);
-  camera.position.copy(cameraPosition);
-  camera.lookAt(correctedTarget);
-  camera.updateProjectionMatrix();
-
-  return camera;
-}
-
-/* ── Preview Lighting Setup ────────────────────────── */
-
-/**
- * Creates a fixed lighting setup for preview rendering.
- *
- * Light config:
- *   - Azimuth: 45°
- *   - Elevation: 45°
- *   - Intensity: 1.5
- *   - Softness: 0.5
- *
- * Plus a subtle fill light to avoid pure-black shadows.
- */
-function createPreviewLights(): THREE.Light[] {
-  const lights: THREE.Light[] = [];
-
-  // Key light
-  const keyLight = new THREE.DirectionalLight(0xffffff, 3.5);
-  const kAzRad = 45 * (Math.PI / 180);
-  const kElRad = 45 * (Math.PI / 180);
-  keyLight.position.set(
-    5 * Math.cos(kElRad) * Math.sin(kAzRad),
-    5 * Math.sin(kElRad),
-    5 * Math.cos(kElRad) * Math.cos(kAzRad),
-  );
-  lights.push(keyLight);
-
-  // Fill light
-  const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
-  fillLight.position.set(-3, 1, -2);
-  lights.push(fillLight);
-
-  // Ambient light for base illumination
-  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-  lights.push(ambient);
-
-  return lights;
-}
-
-/* ── Thumbnail Generation ──────────────────────────── */
+/* ── Cache ─────────────────────────────────────────── */
 
 /**
  * Cache of generated thumbnails.
@@ -184,27 +49,28 @@ const thumbnailCache = new Map<string, string>();
 
 let cachedModelKey: string | null = null;
 
+/* ── Public API ────────────────────────────────────── */
+
 /**
  * Generates thumbnail previews for all material presets.
  *
  * Reloads the model from scratch using the same {@link loadModelFromName}
- * → {@link normalizeModel} pipeline as the main scene, then renders
- * each preset variant into an off-screen render target.
- *
- * Thumbnails are cached by model name so they are only regenerated
- * when the model changes.
+ * → {@link normalizeModel} pipeline as the main scene, then composes a
+ * scene using {@link composeScene} with the **current** settings from the
+ * store so that every thumbnail reflects the user's lighting, background,
+ * glossiness, and camera angle.
  *
  * @param modelName - The model identifier (e.g. `"skull3.obj"`), or
  *                    `null` to use the fallback cube.
  * @param renderer  - The main WebGLRenderer (used for off-screen rendering)
- * @param camState  - Current camera state to use for the preview viewpoint.
- *                    When omitted, a fixed three-quarter view is used.
+ * @param camState  - Current camera state captured from the main viewer.
+ *                    The thumbnail camera mirrors this viewpoint.
  * @returns A Map of preset → data URL
  */
 export async function generateMaterialPreviews(
   modelName: string | null,
   renderer: THREE.WebGLRenderer,
-  _camState?: CameraState,
+  camState?: CameraState,
 ): Promise<Map<MaterialPreset, string>> {
   const cacheKey = modelName ?? '__fallback__';
 
@@ -235,6 +101,18 @@ export async function generateMaterialPreviews(
   }
   normalizeModel(model, 1);
 
+  /* ── Read current settings from the store ────────── */
+
+  const keylight = get('keylight') as LightValue;
+  const fill = get('fill') as LightValue;
+  const rim = get('rim') as LightValue;
+  const glossiness = get('gloss') as number;
+
+  // Match the main scene's dynamic background
+  const bg = getComputedStyle(document.documentElement)
+    .getPropertyValue('--bg-primary')
+    .trim() || '#111111';
+
   const result = new Map<MaterialPreset, string>();
 
   // Save renderer state so we can restore it after off-screen rendering
@@ -246,38 +124,15 @@ export async function generateMaterialPreviews(
   renderer.getScissor(prevScissor);
   const prevScissorTest = renderer.getScissorTest();
 
-  // Off-screen render target (no MSAA — readRenderTargetPixels is
-  // unreliable with MSAA across GPU/driver combinations, and 120×120
-  // thumbnails don't need it — the CSS display will smooth them).
+  // Off-screen render target
   const target = new THREE.WebGLRenderTarget(THUMB_SIZE, THUMB_SIZE);
 
-  // Preview scene
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(PREVIEW_BG);
-
-  // Camera (use current scene camera orientation when available)
-  const camera = createPreviewCamera(model, 1);
-
-  // Lights
-  const lights = createPreviewLights();
-  for (const light of lights) {
-    scene.add(light);
-  }
-
-  // const box = new THREE.Box3().setFromObject(model);
-  // const helper = new THREE.Box3Helper(box, 0xff0000);
-  // scene.add(helper);
-
-  // Add the freshly-loaded model to the preview scene
-  scene.add(model);
-
-  // For each preset, apply the material and render
+  // For each preset, compose a fresh scene (so materials don't bleed)
   for (const preset of PRESET_NAMES) {
-    const mat = getPresetMaterial(preset);
-
-    // Dispose previous preset materials
+    // Dispose the model's current materials (from previous iteration or
+    // original loader) before applyMaterialPreset replaces them in-place.
     model.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.material) {
+      if (child instanceof THREE.Mesh) {
         if (Array.isArray(child.material)) {
           child.material.forEach((m) => m.dispose());
         } else {
@@ -286,13 +141,19 @@ export async function generateMaterialPreviews(
       }
     });
 
-    // Apply preset material to all meshes, using the same material
-    // creation path as the main viewer (carries over vertexColors,
-    // map, side, transparent, opacity from the original material).
-    model.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        child.material = createMaterialForPreset(mat, child);
-      }
+    // Compose the scene with current settings — same as the main viewer,
+    // except material varies per thumbnail and shadows are disabled.
+    const { scene, camera } = composeScene({
+      model,
+      background: bg,
+      keylight,
+      fill,
+      rim,
+      glossiness,
+      material: preset,
+      cameraState: camState,
+      aspect: 1,
+      enableShadows: false,
     });
 
     // Render to off-screen target
@@ -323,10 +184,13 @@ export async function generateMaterialPreviews(
 
     // Cache it
     thumbnailCache.set(`${cacheKey}:${preset}`, dataUrl);
+
+    // Remove the model from this iteration's scene (model is reused).
+    // The scene and its lights will be garbage collected.
+    scene.remove(model);
   }
 
-  // Clean up preview scene and dispose the loaded model
-  scene.remove(model);
+  // Dispose the loaded model (geometry + final materials)
   model.traverse((child) => {
     if (child instanceof THREE.Mesh) {
       child.geometry.dispose();
@@ -337,7 +201,6 @@ export async function generateMaterialPreviews(
       }
     }
   });
-  scene.clear();
   target.dispose();
 
   // Restore renderer state (viewport, scissor, and render target)

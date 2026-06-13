@@ -27,6 +27,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { createRenderer } from './viewer/renderer';
 import { createScene, addLights, updateBackground, updateKeyLight, updateFillLight, updateRimLight } from './viewer/scene';
+import { applyGlossinessToModel } from './viewer/composition';
 import { createCamera, fitCamera } from './viewer/camera';
 import { createControls } from './viewer/controls';
 import { createRenderLoop } from './viewer/render-loop';
@@ -102,7 +103,12 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
 
   /* ── Lighting ─────────────────────────────────── */
 
-  const { keyLight, fillLight, rimLight } = addLights(scene);
+  const { keyLight, fillLight, rimLight } = addLights(scene, {
+    enableShadows: true,
+    keylight: get('keylight') as LightValue,
+    fill: get('fill') as LightValue,
+    rim: get('rim') as LightValue,
+  });
 
   /* ── Fallback Model ────────────────────────────── */
 
@@ -255,69 +261,6 @@ const viewer = createViewer(canvas);
 let currentModelName: string | null = null;
 let currentModelObject: THREE.Object3D | null = null;
 
-/**
- * Applies the current glossiness setting to all materials
- * (on Mesh descendants) that support a gloss/roughness parameter.
- *
- * - PBR materials: roughness = 1 - glossiness
- * - Phong material: shininess = glossiness * MAX_SHININESS
- * - Other materials are silently skipped.
- */
-function applyGlossinessToModel(model: THREE.Object3D): void {
-  const gloss = get('gloss') as number;           // expects 0 (dull) … 1 (glossy)
-  const roughness = 1 - gloss;
-
-  model.traverse((child) => {
-    if (!(child instanceof THREE.Mesh)) return;
-
-    // Normalise to array
-    const materials = Array.isArray(child.material)
-      ? child.material
-      : [child.material];
-
-    for (const mat of materials) {
-      applyGlossinessToMaterial(mat, roughness, gloss);
-    }
-  });
-}
-
-/**
- * Sets the roughness or shininess according to the material type.
- */
-function applyGlossinessToMaterial(
-  material: THREE.Material,
-  roughness: number,   // 0 = glossy, 1 = dull (PBR)
-  gloss: number,       // 0 = dull, 1 = glossy
-): void {
-  const MAX_SHININESS = 100;
-
-  if (
-    material instanceof THREE.MeshStandardMaterial ||
-    material instanceof THREE.MeshPhysicalMaterial
-  ) {
-    material.roughness = roughness;
-    // Uniform change → NO needsUpdate required
-  } else if (material instanceof THREE.MeshPhongMaterial) {
-    material.shininess = Math.round(gloss * MAX_SHININESS);
-    // Also a uniform change – no needsUpdate
-  }
-  // Lambert, Basic, Toon, Matcap, etc. have no gloss → do nothing
-}
-
-/**
- * Loads the model from the URL-derived name, or falls back to the
- * default model if loading fails.
- *
- * After loading:
- *   1. Normalize (centre, uniform scale)
- *   2. Apply glossiness setting
- *   3. Replace the fallback in the scene (triggers auto-fit and render)
- *   4. Apply the URL's camera state, overriding the auto-fit position
- *
- * The UI (settings panel, resize handler, URL sync) is created after
- * loading completes (success or failure), so the settings panel is
- * always available.
- */
 loadModelFromName(modelName)
   .then((model) => {
     // 3. Normalize
@@ -332,7 +275,7 @@ loadModelFromName(modelName)
     }
 
     // 3b. Apply glossiness setting to all materials
-    applyGlossinessToModel(model);
+    applyGlossinessToModel(model, get('gloss') as number);
 
     // 4. Replace fallback → fit camera → render
     viewer.setModel(model);
@@ -517,7 +460,7 @@ function createUI(): void {
    */
   function applyGlossiness(): void {
     if (currentModelObject) {
-      applyGlossinessToModel(currentModelObject);
+      applyGlossinessToModel(currentModelObject, get('gloss') as number);
       viewer.requestRender();
     }
   }
