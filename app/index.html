@@ -33,6 +33,81 @@
   </head>
   <body>
     <canvas id="scene-canvas"></canvas>
+
+    <!-- ── WebGL Error Overlay ─────────────────────── -->
+    <div id="webgl-error">
+      <div class="error-card">
+        <div class="error-icon">⚠️</div>
+        <h1>3D Hardware Acceleration Required</h1>
+        <p>
+          DrawRef uses 3D graphics (WebGL) to render interactive models in your browser.
+          Your browser or device does not support WebGL, or it has been disabled.
+        </p>
+
+        <hr class="divider" />
+
+        <p>
+          <strong>If you're using Safari — Lockdown Mode may be blocking WebGL.</strong>
+        </p>
+        <p>To add this site as an exception in Safari Lockdown Mode:</p>
+        <ol>
+          <li>Open <strong>Safari Settings</strong> (or <em>Preferences</em>)</li>
+          <li>Go to the <strong>Websites</strong> tab</li>
+          <li>Select <strong>Lockdown Mode</strong> in the sidebar</li>
+          <li>Find <strong>drawref.app</strong> in the list (or visit the site first)</li>
+          <li>Change its setting to <strong>"Off"</strong> (Allow)</li>
+          <li>Reload this page</li>
+        </ol>
+
+        <hr class="divider" />
+
+        <p>
+          <strong>Other common causes:</strong>
+        </p>
+        <ol>
+          <li><strong>Browser extensions</strong> blocking WebGL (try disabling ad-blockers or privacy extensions)</li>
+          <li><strong>Outdated or unsupported browser</strong> — update to the latest version of Chrome, Edge, Firefox, or Safari</li>
+          <li><strong>GPU driver issues</strong> — update your graphics drivers</li>
+          <li><strong>Virtual machine or remote desktop</strong> may not support hardware-accelerated 3D</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ── WebGL Detection ─────────────────────────── -->
+    <script>
+      (function() {
+        function testWebGL() {
+          try {
+            var canvas = document.createElement('canvas');
+            var gl =
+              canvas.getContext('webgl') ||
+              canvas.getContext('experimental-webgl') ||
+              canvas.getContext('webgl2');
+            if (!gl) return false;
+            // Check that the context is actually usable
+            var status = gl.getParameter(gl.RENDERER);
+            return status !== '' && status !== null && status !== undefined;
+          } catch (e) {
+            return false;
+          }
+        }
+
+        if (!testWebGL()) {
+          // Hide the canvas, show the error overlay
+          var canvas = document.getElementById('scene-canvas');
+          if (canvas) canvas.style.display = 'none';
+          var overlay = document.getElementById('webgl-error');
+          if (overlay) overlay.classList.add('is-visible');
+
+          console.error(
+            '[DrawRef] WebGL is not available. The 3D viewer cannot start.' +
+            '\nCauses: Safari Lockdown Mode, disabled hardware acceleration,' +
+            ' outdated browser, or missing GPU drivers.'
+          );
+        }
+      })();
+    </script>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

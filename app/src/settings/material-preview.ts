@@ -159,9 +159,7 @@ export async function generateMaterialPreviews(
     // Render to off-screen target
     renderer.autoClear = true;
     renderer.setRenderTarget(target);
-    const scale = 1.0;
-    const off = 0.10;
-    renderer.setViewport(-THUMB_SIZE * off * scale, -THUMB_SIZE * off * scale, THUMB_SIZE* scale, THUMB_SIZE* scale);
+    // renderer.setViewport(-THUMB_SIZE * off * scale, -THUMB_SIZE * off * scale, THUMB_SIZE* scale, THUMB_SIZE* scale);
     renderer.setScissor(0, 0, THUMB_SIZE, THUMB_SIZE);
     renderer.setScissorTest(false);
     renderer.render(scene, camera);

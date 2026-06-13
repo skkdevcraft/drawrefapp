@@ -34,7 +34,8 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  touch-action: none;   /* prevent scroll/zoom interference on mobile */
+  touch-action: none;
+  /* prevent scroll/zoom interference on mobile */
   position: absolute;
   top: 0;
   left: 0;
@@ -83,10 +84,25 @@ body {
 }
 
 /* Corner positions */
-.settings-toggle[data-corner="tl"] { top: 0; left: 0; }
-.settings-toggle[data-corner="tr"] { top: 0; right: 0; }
-.settings-toggle[data-corner="bl"] { bottom: 0; left: 0; }
-.settings-toggle[data-corner="br"] { bottom: 0; right: 0; }
+.settings-toggle[data-corner="tl"] {
+  top: 0;
+  left: 0;
+}
+
+.settings-toggle[data-corner="tr"] {
+  top: 0;
+  right: 0;
+}
+
+.settings-toggle[data-corner="bl"] {
+  bottom: 0;
+  left: 0;
+}
+
+.settings-toggle[data-corner="br"] {
+  bottom: 0;
+  right: 0;
+}
 
 /* ── Sliding Panel ────────────────────────────────── */
 
@@ -262,7 +278,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 
 .light-control svg {
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .light-control svg circle[r="8"] {
@@ -427,75 +443,187 @@ select.settings-control {
 
 :root {
   /* Backgrounds */
-  --bg-primary:       #1a1a2e;
-  --bg-secondary:     #16213e;
-  --bg-surface:       #0f3460;
-  --bg-overlay:       rgba(15, 52, 96, 0.85);
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-surface: #0f3460;
+  --bg-overlay: rgba(15, 52, 96, 0.85);
 
   /* Text */
-  --text-primary:     #e8e8e8;
-  --text-secondary:   #a0a0b0;
-  --text-muted:       #6b7280;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0b0;
+  --text-muted: #6b7280;
 
   /* Accent */
-  --accent:           #e94560;
-  --accent-hover:     #ff6b81;
-  --accent-subtle:    rgba(233, 69, 96, 0.15);
+  --accent: #e94560;
+  --accent-hover: #ff6b81;
+  --accent-subtle: rgba(233, 69, 96, 0.15);
 
   /* Borders */
-  --border:           rgba(255, 255, 255, 0.08);
-  --border-hover:     rgba(255, 255, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.16);
 
   /* Shadows */
-  --shadow-sm:        0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md:        0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-lg:        0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
 
   /* Typography */
-  --font-sans:        system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono:        ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace;
 
   /* Radii */
-  --radius-sm:        6px;
-  --radius-md:        10px;
-  --radius-lg:        16px;
-  --radius-full:      9999px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
 
   /* Transitions */
-  --transition-fast:  150ms ease;
+  --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
-  --transition-slow:  400ms ease;
+  --transition-slow: 400ms ease;
 
   /* Z-indices */
-  --z-canvas:         0;
-  --z-ui:             10;
-  --z-panel:          20;
-  --z-overlay:        30;
-  --z-toast:          40;
+  --z-canvas: 0;
+  --z-ui: 10;
+  --z-panel: 20;
+  --z-overlay: 30;
+  --z-toast: 40;
 }
 
 /* ── Light Scheme ──────────────────────────────────── */
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg-primary:       #f0f0f5;
-    --bg-secondary:     #e4e4ec;
-    --bg-surface:       #ffffff;
-    --bg-overlay:       rgba(255, 255, 255, 0.9);
+    --bg-primary: #f0f0f5;
+    --bg-secondary: #e4e4ec;
+    --bg-surface: #ffffff;
+    --bg-overlay: rgba(255, 255, 255, 0.9);
 
-    --text-primary:     #1a1a2e;
-    --text-secondary:   #4a4a5a;
-    --text-muted:       #9ca3af;
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a4a5a;
+    --text-muted: #9ca3af;
 
-    --accent:           #e94560;
-    --accent-hover:     #d63850;
-    --accent-subtle:    rgba(233, 69, 96, 0.1);
+    --accent: #e94560;
+    --accent-hover: #d63850;
+    --accent-subtle: rgba(233, 69, 96, 0.1);
 
-    --border:           rgba(0, 0, 0, 0.08);
-    --border-hover:     rgba(0, 0, 0, 0.16);
+    --border: rgba(0, 0, 0, 0.08);
+    --border-hover: rgba(0, 0, 0, 0.16);
 
-    --shadow-sm:        0 1px 3px rgba(0, 0, 0, 0.08);
-    --shadow-md:        0 4px 12px rgba(0, 0, 0, 0.1);
-    --shadow-lg:        0 8px 24px rgba(0, 0, 0, 0.15);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
   }
+}
+
+/* ── WebGL Error Overlay ─────────────────────── */
+#webgl-error {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #1a1a2e;
+  color: #e8e8e8;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overflow-y: auto;
+}
+
+#webgl-error.is-visible {
+  display: flex;
+  align-items: start;
+  justify-content: center;
+}
+
+#webgl-error .error-card {
+  max-width: 520px;
+  width: 90%;
+  margin: 40px auto;
+  background: #16213e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 36px 28px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+#webgl-error h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #e94560;
+}
+
+#webgl-error p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #a0a0b0;
+  margin: 0 0 16px 0;
+}
+
+#webgl-error .error-card p:first-of-type {
+  color: #e8e8e8;
+  font-size: 16px;
+}
+
+#webgl-error ol {
+  margin: 0 0 16px 0;
+  padding-left: 22px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #a0a0b0;
+}
+
+#webgl-error ol li {
+  margin-bottom: 4px;
+}
+
+#webgl-error strong {
+  color: #e8e8e8;
+}
+
+#webgl-error code {
+  background: #0f3460;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #8ab4f8;
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace;
+}
+
+#webgl-error .error-icon {
+  text-align: center;
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+#webgl-error .browser-list {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+#webgl-error .browser-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #0f3460;
+  color: #e8e8e8;
+  text-decoration: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+#webgl-error .browser-btn:hover {
+  background: rgba(233, 69, 96, 0.15);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+#webgl-error .divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 20px 0;
 }
