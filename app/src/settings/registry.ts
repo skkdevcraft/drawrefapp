@@ -351,7 +351,7 @@ const glossinessSetting: SettingDefinition<number> = {
  */
 export const SETTINGS = [
   buttonPositionSetting,
-  // glossinessSetting,
+  glossinessSetting,
   materialPresetSetting,
   keylightSetting,
   fillLightSetting,

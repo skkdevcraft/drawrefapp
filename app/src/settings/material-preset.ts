@@ -28,7 +28,7 @@ export const PRESET_NAMES: readonly MaterialPreset[] = [
   'plaster',
   'clay',
   'bronze',
-  'matte-black',
+  // 'matte-black',
   'chrome',
 ];
 
@@ -79,7 +79,7 @@ const PRESET_MATERIALS: Record<MaterialPreset, PresetMaterial> = {
   chrome: {
     color: '#ffffff',
     roughness: 0.0,
-    metalness: 1.0,
+    metalness: 0.9,
     materialClass: 'physical',
   },
 };
