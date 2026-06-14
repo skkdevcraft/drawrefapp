@@ -228,7 +228,7 @@ const urlState = deserializeState();
 const modelName: string =
   urlState && urlState.model && urlState.model.trim().length > 0
     ? urlState.model
-    : 'skull3.obj';
+    : 'skull.obj';
 
 /* ── Apply settings from URL to the settings store ──── */
 
@@ -333,6 +333,7 @@ function createUI(): void {
       }
     },
     viewerControls,
+    currentModelName ?? modelName,
   );
 
   /* ── Panel-Aware Scene Resize ──────────────────── */

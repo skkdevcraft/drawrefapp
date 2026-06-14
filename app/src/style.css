@@ -167,6 +167,57 @@ body {
   }
 }
 
+/* ── Model Credits ──────────────────────────────────── */
+
+.model-credits {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.credit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.credit-label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.credit-value {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.credit-value--filename {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.credit-value--link {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.credit-value--link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 /* ── Settings Rows ──────────────────────────────────── */
 
 .settings-row {

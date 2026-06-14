@@ -61,7 +61,7 @@ const buttonPositionSetting: SettingDefinition<string> = {
 
   type: 'select',
 
-  defaultValue: 'tl',
+  defaultValue: 'tr',
 
   serialize: value => value,
 
@@ -75,7 +75,7 @@ const buttonPositionSetting: SettingDefinition<string> = {
       return value;
     }
 
-    return 'tl';
+    return 'tr';
   },
 
   createControl(value, onChange) {

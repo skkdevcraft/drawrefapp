@@ -14,6 +14,7 @@ import { get, subscribe } from '../settings/store';
 import { renderSettingsPanel } from '../settings/ui';
 import { createToggleButton } from './button';
 import { renderViewPresets, type ViewerControls } from './presets';
+import { getModelCredit } from '../models/credits';
 
 /* ── Types ────────────────────────────────────────── */
 
@@ -33,10 +34,14 @@ export class SettingsPanel {
   private onToggle: ((open: boolean) => void) | null;
   private viewerControls: ViewerControls | null;
 
+  private modelName: string | null;
+
   constructor(
     onToggle?: (open: boolean) => void,
     viewerControls?: ViewerControls,
+    modelName?: string | null,
   ) {
+    this.modelName = modelName ?? null;
     this.onToggle = onToggle ?? null;
 
     /* ── Toggle Button ──────────────────────────────── */
@@ -163,9 +168,97 @@ export class SettingsPanel {
     }
   }
 
+  /* ── Model name ──────────────────────────────────── */
+
+  /**
+   * Updates the current model name and re-renders the credits section.
+   * Called when a new model is loaded so attribution stays in sync.
+   */
+  setModelName(name: string | null): void {
+    this.modelName = name;
+    this.updateCredits();
+  }
+
+  /* ── Credits Section ─────────────────────────────── */
+
+  private creditsSection: HTMLElement | null = null;
+
+  /**
+   * Renders the model credits row at the top of the panel.
+   * If the current model has no registered credits, the section is hidden.
+   */
+  private renderCredits(): HTMLElement {
+    const section = document.createElement('div');
+    section.className = 'model-credits';
+
+    if (!this.modelName) {
+      section.style.display = 'none';
+      return section;
+    }
+
+    const credit = getModelCredit(this.modelName);
+
+    if (!credit) {
+      section.style.display = 'none';
+      return section;
+    }
+
+    // Model filename
+    const nameRow = document.createElement('div');
+    nameRow.className = 'credit-row';
+    nameRow.innerHTML = `<span class="credit-label">Model</span><span class="credit-value credit-value--filename">${escapeHtml(this.modelName)}</span>`;
+    section.append(nameRow);
+
+    // Author
+    if (credit.author) {
+      const row = document.createElement('div');
+      row.className = 'credit-row';
+      row.innerHTML = `<span class="credit-label">Author</span><span class="credit-value">${escapeHtml(credit.author)}</span>`;
+      section.append(row);
+    }
+
+    // Source
+    if (credit.source) {
+      const row = document.createElement('div');
+      row.className = 'credit-row';
+
+      // If source looks like a URL, make it a link
+      const isUrl = /^https?:\/\//.test(credit.source);
+      if (isUrl) {
+        row.innerHTML = `<span class="credit-label">Source</span><a class="credit-value credit-value--link" href="${escapeHtml(credit.source)}" target="_blank" rel="noopener noreferrer">${escapeHtml(credit.source)}</a>`;
+      } else {
+        row.innerHTML = `<span class="credit-label">Source</span><span class="credit-value">${escapeHtml(credit.source)}</span>`;
+      }
+      section.append(row);
+    }
+
+    // License
+    if (credit.license) {
+      const row = document.createElement('div');
+      row.className = 'credit-row';
+      row.innerHTML = `<span class="credit-label">License</span><span class="credit-value">${escapeHtml(credit.license)}</span>`;
+      section.append(row);
+    }
+
+    return section;
+  }
+
+  /** Updates the credits section in the panel. */
+  private updateCredits(): void {
+    if (!this.creditsSection) return;
+
+    const newSection = this.renderCredits();
+    this.creditsSection.replaceWith(newSection);
+    this.creditsSection = newSection;
+  }
+
   /* ── Populate panel from registry ───────────────── */
 
   private populatePanel(): void {
+    // Credits section at the top
+    this.creditsSection = this.renderCredits();
+    this.panel.append(this.creditsSection);
+
     this.panel.append(renderSettingsPanel());
 
     // Only add view presets if viewer controls are available
@@ -187,4 +280,16 @@ export class SettingsPanel {
     this.button.remove();
     this.panel.remove();
   }
+}
+
+/* ── Helpers ────────────────────────────────────────── */
+
+/**
+ * Escapes HTML special characters to prevent XSS when rendering
+ * user-provided or external content like model names and URLs.
+ */
+function escapeHtml(text: string): string {
+  const el = document.createElement('span');
+  el.textContent = text;
+  return el.innerHTML;
 }
