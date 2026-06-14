@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { createRenderer } from './viewer/renderer';
-import { createScene, addLights, updateBackground, updateKeyLight, updateFillLight, updateRimLight } from './viewer/scene';
+import { createScene, addLights, updateKeyLight, updateFillLight, updateRimLight } from './viewer/scene';
 import { applyGlossinessToModel } from './viewer/composition';
 import { createCamera, fitCamera } from './viewer/camera';
 import { createControls } from './viewer/controls';
@@ -173,17 +173,6 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
 
   window.addEventListener('resize', onResize);
 
-  /* ── Theme Change Handling ──────────────────────── */
-
-  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-  function onThemeChange() {
-    updateBackground(scene);
-    requestRender();
-  }
-
-  darkModeQuery.addEventListener('change', onThemeChange);
-
   /* ── Cleanup ──────────────────────────────────────── */
 
   function dispose() {
@@ -191,7 +180,6 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
     controls.dispose();
     renderer.dispose();
     window.removeEventListener('resize', onResize);
-    darkModeQuery.removeEventListener('change', onThemeChange);
   }
 
   return {
@@ -255,6 +243,20 @@ if (!canvas) {
 }
 
 const viewer = createViewer(canvas);
+
+/* ── Apply background from URL settings ────────────── */
+
+/**
+ * Override the hard-coded scene background with the value from the
+ * settings store (which was populated from URL query parameters).
+ */
+{
+  const bg = get('bg') as string;
+  if (bg) {
+    viewer.scene.background = new THREE.Color(bg);
+  }
+  viewer.requestRender();
+}
 
 /* ── 3–5. Load model → Normalize → Set model (fit camera) → Apply camera state ── */
 
@@ -454,6 +456,29 @@ function createUI(): void {
     }
   });
 
+  /* ── Background Sync ──────────────────────────── */
+
+  /**
+   * Applies the current background colour to the scene.
+   */
+  function applyBackground(): void {
+    const bg = get('bg') as string;
+    if (bg) {
+      viewer.scene.background = new THREE.Color(bg);
+      viewer.requestRender();
+    }
+  }
+
+  // Apply initial background from URL state (already loaded into store)
+  applyBackground();
+
+  // Subscribe to background changes
+  const unsubBackground = subscribe((id) => {
+    if (id === 'bg') {
+      applyBackground();
+    }
+  });
+
   /* ── Glossiness Sync ────────────────────────────────── */
 
   /**
@@ -539,6 +564,7 @@ function createUI(): void {
     unsubKeyLight();
     unsubFillLight();
     unsubRimLight();
+    unsubBackground();
     unsubGloss();
     unsubMaterial();
     invalidateModelPreviews();

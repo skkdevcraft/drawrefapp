@@ -338,6 +338,58 @@ const glossinessSetting: SettingDefinition<number> = {
   },
 };
 
+/* ── Background Colour Setting ──────────────────────── */
+
+/**
+ * Controls the scene background colour.
+ *
+ * Stored as a CSS hex colour string (e.g. `'#111111'`).
+ * The `<input type="color">` control natively produces hex strings,
+ * so serialization is a simple pass-through.
+ */
+const backgroundColorSetting: SettingDefinition<string> = {
+  id: 'bg',
+
+  label: 'Background',
+
+  type: 'color',
+
+  defaultValue: '#111111',
+
+  serialize: v => v,
+
+  deserialize: raw => {
+    // Accept any hex colour from the color picker.
+    // Invalid or missing values fall back to the default.
+    if (typeof raw === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw)) {
+      return raw;
+    }
+    return '#111111';
+  },
+
+  createControl(value, onChange) {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = value;
+    input.style.cssText = `
+      width: 44px;
+      height: 44px;
+      padding: 4px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: none;
+      cursor: pointer;
+      display: block;
+    `;
+
+    input.oninput = () => {
+      onChange(input.value);
+    };
+
+    return input;
+  },
+};
+
 /* ── Registry ──────────────────────────────────────── */
 
 /**
@@ -351,6 +403,7 @@ const glossinessSetting: SettingDefinition<number> = {
  */
 export const SETTINGS = [
   buttonPositionSetting,
+  backgroundColorSetting,
   glossinessSetting,
   materialPresetSetting,
   keylightSetting,
