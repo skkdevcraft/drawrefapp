@@ -76,9 +76,10 @@ export function addLights(
     keyLight.shadow.camera.bottom = -shadowSize;
     keyLight.shadow.camera.near = 0.5;
     keyLight.shadow.camera.far = 20;
-    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.mapSize.set(4096, 4096);
     keyLight.shadow.radius = 0.5;
-    keyLight.shadow.bias = -0.001;
+    keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.normalBias = 0.5;
   }
 
   scene.add(keyLight);
