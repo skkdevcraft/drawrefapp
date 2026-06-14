@@ -107,6 +107,7 @@ export async function generateMaterialPreviews(
   const fill = get('fill') as LightValue;
   const rim = get('rim') as LightValue;
   const glossiness = get('gloss') as number;
+  const ambient = get('ambient') as number;
 
   // Match the main scene's dynamic background
   const bg = getComputedStyle(document.documentElement)
@@ -146,6 +147,7 @@ export async function generateMaterialPreviews(
     const { scene, camera } = composeScene({
       model,
       background: bg,
+      ambient,
       keylight,
       fill,
       rim,

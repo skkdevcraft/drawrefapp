@@ -28,6 +28,9 @@ export interface CompositionOptions {
   /** Background colour (CSS hex, e.g. `'#111111'`). Default: `'#111111'`. */
   background?: string;
 
+  /** Ambient light intensity (0–1). Default: `0.2`. */
+  ambient?: number;
+
   /** Key light parameters. Omit to use hard-coded defaults. */
   keylight?: LightValue;
 
@@ -78,6 +81,7 @@ export function composeScene(options: CompositionOptions): ComposedScene {
   const {
     model,
     background,
+    ambient,
     keylight,
     fill,
     rim,
@@ -91,6 +95,7 @@ export function composeScene(options: CompositionOptions): ComposedScene {
   // 1–2. Scene + lights
   const scene = createScene(background);
   const lights = addLights(scene, {
+    ambient,
     keylight,
     fill,
     rim,

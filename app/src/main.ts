@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { createRenderer } from './viewer/renderer';
-import { createScene, addLights, updateKeyLight, updateFillLight, updateRimLight } from './viewer/scene';
+import { createScene, addLights, updateKeyLight, updateFillLight, updateRimLight, updateAmbientLight } from './viewer/scene';
 import { applyGlossinessToModel } from './viewer/composition';
 import { createCamera, fitCamera } from './viewer/camera';
 import { createControls } from './viewer/controls';
@@ -57,6 +57,7 @@ export interface ViewerAPI {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
+  ambientLight: THREE.AmbientLight;
   keyLight: THREE.DirectionalLight;
   fillLight: THREE.DirectionalLight;
   rimLight: THREE.DirectionalLight;
@@ -103,7 +104,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
 
   /* ── Lighting ─────────────────────────────────── */
 
-  const { keyLight, fillLight, rimLight } = addLights(scene, {
+  const { ambientLight, keyLight, fillLight, rimLight } = addLights(scene, {
     enableShadows: true,
     keylight: get('keylight') as LightValue,
     fill: get('fill') as LightValue,
@@ -187,6 +188,7 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
     scene,
     camera,
     controls,
+    ambientLight,
     keyLight,
     fillLight,
     rimLight,
@@ -479,6 +481,29 @@ function createUI(): void {
     }
   });
 
+  /* ── Ambient Light Sync ──────────────────────────── */
+
+  /**
+   * Applies the current ambient light intensity to the scene.
+   */
+  function applyAmbientLight(): void {
+    const v = get('ambient') as number;
+    if (v !== undefined) {
+      updateAmbientLight(viewer.ambientLight, v);
+      viewer.requestRender();
+    }
+  }
+
+  // Apply initial ambient light from URL state
+  applyAmbientLight();
+
+  // Subscribe to ambient light changes
+  const unsubAmbient = subscribe((id) => {
+    if (id === 'ambient') {
+      applyAmbientLight();
+    }
+  });
+
   /* ── Glossiness Sync ────────────────────────────────── */
 
   /**
@@ -565,6 +590,7 @@ function createUI(): void {
     unsubFillLight();
     unsubRimLight();
     unsubBackground();
+    unsubAmbient();
     unsubGloss();
     unsubMaterial();
     invalidateModelPreviews();

@@ -390,6 +390,79 @@ const backgroundColorSetting: SettingDefinition<string> = {
   },
 };
 
+/* ── Ambient Light Intensity Setting ──────────────────── */
+
+/**
+ * Controls the intensity of the scene's ambient (fill/flat) light.
+ *
+ * 0 = completely dark (no ambient)
+ * 1 = maximum ambient brightness
+ */
+const ambientLightSetting: SettingDefinition<number> = {
+  id: 'ambient',
+
+  label: 'Ambient Light',
+
+  type: 'number',
+
+  defaultValue: 0.2,
+
+  serialize: v => String(v),
+
+  deserialize: raw => {
+    if (raw === null) return 0.2;
+    const n = parseFloat(raw);
+    if (isNaN(n)) return 0.2;
+    return Math.min(1, Math.max(0, n));
+  },
+
+  createControl(value, onChange) {
+    const container = document.createElement('div');
+    container.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+    `;
+
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = '0';
+    input.max = '1';
+    input.step = '0.01';
+    input.value = String(value);
+    input.style.cssText = `
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    `;
+
+    const display = document.createElement('span');
+    display.style.cssText = `
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      min-width: 28px;
+      text-align: right;
+    `;
+    display.textContent = value.toFixed(2);
+
+    input.oninput = () => {
+      const v = parseFloat(input.value);
+      display.textContent = v.toFixed(2);
+      onChange(v);
+    };
+
+    container.append(input, display);
+    return container;
+  },
+};
+
 /* ── Registry ──────────────────────────────────────── */
 
 /**
@@ -405,6 +478,7 @@ export const SETTINGS = [
   buttonPositionSetting,
   backgroundColorSetting,
   glossinessSetting,
+  ambientLightSetting,
   materialPresetSetting,
   keylightSetting,
   fillLightSetting,

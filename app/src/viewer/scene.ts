@@ -12,12 +12,14 @@ import * as THREE from 'three';
 import type { LightValue } from '../settings/registry';
 
 export interface LightSet {
+  ambientLight: THREE.AmbientLight;
   keyLight: THREE.DirectionalLight;
   fillLight: THREE.DirectionalLight;
   rimLight: THREE.DirectionalLight;
 }
 
 export interface LightsOptions {
+  ambient?: number;
   keylight?: LightValue;
   fill?: LightValue;
   rim?: LightValue;
@@ -50,7 +52,8 @@ export function addLights(
   scene: THREE.Scene,
   options?: LightsOptions,
 ): LightSet {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+  const ambientIntensity = options?.ambient ?? 0.2;
+  const ambientLight = new THREE.AmbientLight(0xffffff, ambientIntensity);
   scene.add(ambientLight);
 
   const keyLight = new THREE.DirectionalLight(
@@ -105,7 +108,7 @@ export function addLights(
     rimLight.position.set(0, -6, -4);
   }
 
-  return { keyLight, fillLight, rimLight };
+  return { ambientLight, keyLight, fillLight, rimLight };
 }
 
 /**
@@ -202,6 +205,16 @@ export function updateRimLight(
   rimLight.intensity = intensity;
 
   void softness; // reserved for future softness support on rim light
+}
+
+/**
+ * Updates the ambient light intensity.
+ */
+export function updateAmbientLight(
+  ambientLight: THREE.AmbientLight,
+  intensity: number,
+): void {
+  ambientLight.intensity = intensity;
 }
 
 /**
