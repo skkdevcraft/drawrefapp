@@ -46,6 +46,7 @@ import { deserializeState } from './settings/serialization';
 import { startUrlSync } from './url/state';
 
 import { SettingsPanel, type ViewerControls } from './ui/panel';
+import { createEyeButton, EYE_OPEN_ICON, EYE_CLOSED_ICON } from './ui/button';
 
 import { applyMaterialPreset, type MaterialPreset } from './settings/material-preset';
 import { clearPreviewCache, generateMaterialPreviews, invalidateModelPreviews } from './settings/material-preview';
@@ -316,6 +317,26 @@ loadModelFromName(modelName)
  * successfully.
  */
 function createUI(): void {
+  /* ── Model Visibility State ────────────────────── */
+
+  let modelVisible = true;
+
+  /* ── Eye Toggle Button ──────────────────────────── */
+
+  const eyeButton = createEyeButton(() => {
+    const model = viewer.getModel();
+    if (!model) return;
+
+    modelVisible = !modelVisible;
+    model.visible = modelVisible;
+
+    // Update icon
+    eyeButton.innerHTML = modelVisible ? EYE_OPEN_ICON : EYE_CLOSED_ICON;
+    eyeButton.dataset.visible = String(modelVisible);
+
+    viewer.requestRender();
+  });
+
   /* ── Settings Panel ────────────────────────────── */
 
   const viewerControls: ViewerControls = {
@@ -326,6 +347,9 @@ function createUI(): void {
 
   const settingsPanel = new SettingsPanel(
     (open) => {
+      // Hide eye button when settings panel is open
+      eyeButton.classList.toggle('is-hidden', open);
+
       resizeScene(open, settingsPanel);
       if (open) {
         // Clear cache and regenerate thumbnails fresh every time panel opens
@@ -339,6 +363,21 @@ function createUI(): void {
     viewerControls,
     currentModelName ?? modelName,
   );
+
+  /* ── Sync eye button corner with settings button ── */
+
+  const initialCorner = (get('btn') as string) ?? 'tl';
+  eyeButton.dataset.corner = initialCorner;
+
+  // Append eye button to body (both buttons use fixed positioning)
+  document.body.appendChild(eyeButton);
+
+  // Keep eye button corner in sync with settings button
+  const unsubBtn = subscribe((id, value) => {
+    if (id === 'btn') {
+      eyeButton.dataset.corner = value as string;
+    }
+  });
 
   /* ── Panel-Aware Scene Resize ──────────────────── */
 
@@ -593,9 +632,11 @@ function createUI(): void {
     unsubAmbient();
     unsubGloss();
     unsubMaterial();
+    unsubBtn();
     invalidateModelPreviews();
     window.removeEventListener('resize', onWindowResize);
     settingsPanel.dispose();
+    eyeButton.remove();
     origDispose();
   };
 }

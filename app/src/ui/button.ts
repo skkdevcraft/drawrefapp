@@ -12,6 +12,26 @@ export const GEAR_ICON = `
   </svg>
 `.trim();
 
+/** Small inline SVG open eye icon. */
+export const EYE_OPEN_ICON = `
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2" stroke-linecap="round"
+       stroke-linejoin="round">
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+`.trim();
+
+/** Small inline SVG closed eye icon. */
+export const EYE_CLOSED_ICON = `
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2" stroke-linecap="round"
+       stroke-linejoin="round">
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+    <line x1="2" y1="12" x2="22" y2="12"/>
+  </svg>
+`.trim();
+
 /**
  * Creates the settings toggle button element.
  *
@@ -24,6 +44,27 @@ export function createToggleButton(onClick: () => void): HTMLButtonElement {
   button.className = 'settings-toggle';
   button.setAttribute('aria-label', 'Toggle settings panel');
   button.innerHTML = GEAR_ICON;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+/**
+ * Creates the eye toggle button element for showing/hiding the model.
+ *
+ * Uses outline eye icons: open eye when model is visible, closed eye
+ * when model is hidden. The button is transparent and positioned next
+ * to the settings toggle button.
+ *
+ * @param onClick - Click handler to toggle model visibility
+ * @returns The button element (not yet inserted into DOM)
+ */
+export function createEyeButton(onClick: () => void): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.id = 'eye-toggle';
+  button.className = 'eye-toggle';
+  button.setAttribute('aria-label', 'Toggle model visibility');
+  button.innerHTML = EYE_OPEN_ICON;
+  button.dataset.visible = 'true';
   button.addEventListener('click', onClick);
   return button;
 }

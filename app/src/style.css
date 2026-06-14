@@ -42,6 +42,74 @@ body {
   transition: left 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* ── Eye Toggle Button ──────────────────────────── */
+
+.eye-toggle {
+  position: fixed;
+  z-index: var(--z-panel);
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    opacity var(--transition-fast),
+    color var(--transition-fast);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
+  margin: 16px;
+}
+
+.eye-toggle:hover {
+  color: var(--text-primary);
+}
+
+.eye-toggle:active {
+  opacity: 0.6;
+}
+
+.eye-toggle[data-visible="false"] {
+  color: var(--text-muted);
+}
+
+/* Hidden when settings panel is open */
+.eye-toggle.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Corner positions — eye button sits next to the settings toggle */
+.eye-toggle[data-corner="tl"] {
+  top: 0;
+  left: 0;
+  /* offset by settings toggle width + 16px margin + 8px gap */
+  margin-left: calc(16px + 48px + 8px);
+}
+
+.eye-toggle[data-corner="tr"] {
+  top: 0;
+  right: 0;
+  margin-right: calc(16px + 48px + 8px);
+}
+
+.eye-toggle[data-corner="bl"] {
+  bottom: 0;
+  left: 0;
+  margin-left: calc(16px + 48px + 8px);
+}
+
+.eye-toggle[data-corner="br"] {
+  bottom: 0;
+  right: 0;
+  margin-right: calc(16px + 48px + 8px);
+}
+
 /* ── Settings Panel ──────────────────────────────────── */
 
 /* ── Toggle Button ────────────────────────────────── */
