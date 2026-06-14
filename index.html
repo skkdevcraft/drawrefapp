@@ -30,14 +30,14 @@
         height: 100%;
       }
     </style>
-    <script type="module" crossorigin src="/drawrefapp/assets/index-BMxsaOlA.js"></script>
-    <link rel="stylesheet" crossorigin href="/drawrefapp/assets/index-xCCyM256.css">
+    <script type="module" crossorigin src="/drawrefapp/assets/index-CJJYE2rJ.js"></script>
+    <link rel="stylesheet" crossorigin href="/drawrefapp/assets/index-VBxidGR5.css">
   </head>
   <body>
     <canvas id="scene-canvas"></canvas>
 
     <!-- ── WebGL Error Overlay ─────────────────────── -->
-    <div id="webgl-error">
+    <div id="webgl-error" style="display: none;">
       <div class="error-card">
         <div class="error-icon">⚠️</div>
         <h1>3D Hardware Acceleration Required</h1>
@@ -99,7 +99,10 @@
           var canvas = document.getElementById('scene-canvas');
           if (canvas) canvas.style.display = 'none';
           var overlay = document.getElementById('webgl-error');
-          if (overlay) overlay.classList.add('is-visible');
+          if (overlay) {
+            overlay.style.display = "block";
+            overlay.classList.add('is-visible');
+          }
 
           console.error(
             '[DrawRef] WebGL is not available. The 3D viewer cannot start.' +
