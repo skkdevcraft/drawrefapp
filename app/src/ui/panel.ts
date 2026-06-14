@@ -255,9 +255,6 @@ export class SettingsPanel {
   /* ── Populate panel from registry ───────────────── */
 
   private populatePanel(): void {
-    // Credits section at the top
-    this.creditsSection = this.renderCredits();
-    this.panel.append(this.creditsSection);
 
     this.panel.append(renderSettingsPanel());
 
@@ -270,6 +267,10 @@ export class SettingsPanel {
       );
       this.panel.append(presetsSection);
     }
+
+    // Credits section
+    this.creditsSection = this.renderCredits();
+    this.panel.append(this.creditsSection);
   }
 
   /* ── Cleanup ─────────────────────────────────────── */
