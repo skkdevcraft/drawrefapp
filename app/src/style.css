@@ -121,7 +121,7 @@ body {
   height: 48px;
   border: none;
   border-radius: var(--radius-full);
-  background: var(--bg-surface);
+  background: color-mix(in srgb, var(--bg-surface) 20%, transparent);
   color: var(--text-primary);
   cursor: pointer;
   display: flex;
