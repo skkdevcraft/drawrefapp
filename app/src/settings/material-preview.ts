@@ -153,7 +153,7 @@ export async function generateMaterialPreviews(
       rim,
       glossiness,
       material: preset,
-      cameraState: camState,
+      cameraState: camState && { ...camState, radius: camState.radius * 0.8 },
       aspect: 1,
       enableShadows: false,
     });
