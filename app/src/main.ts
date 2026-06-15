@@ -505,6 +505,8 @@ function createUI(): void {
   function applyBackground(): void {
     const bg = get('bg') as string;
     if (bg) {
+      document.documentElement.style.backgroundColor = bg;
+      document.body.style.backgroundColor = bg;
       viewer.scene.background = new THREE.Color(bg);
       viewer.requestRender();
     }
