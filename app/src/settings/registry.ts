@@ -405,7 +405,7 @@ const ambientLightSetting: SettingDefinition<number> = {
 
   type: 'number',
 
-  defaultValue: 0.2,
+  defaultValue: 0.0,
 
   serialize: v => String(v),
 
