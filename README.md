@@ -8,6 +8,12 @@ A lightweight web app for **drawing from 3D reference models**. Rotate, pan, and
 
 ---
 
+# Demo - side by side on an iPad
+
+https://github.com/user-attachments/assets/b8291e76-5b24-4026-a8be-18fb00686655
+
+---
+
 ## Features
 
 - **3D model viewer** — inspect any angle while you sketch
