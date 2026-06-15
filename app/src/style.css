@@ -468,7 +468,7 @@ select.settings-control {
 }
 
 .material-preset-preview {
-  width: 64px;
+  width: 100px;
   height: 64px;
   border-radius: var(--radius-sm);
   background: var(--bg-secondary);

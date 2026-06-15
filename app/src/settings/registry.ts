@@ -128,7 +128,7 @@ const keylightSetting: SettingDefinition<LightValue> = {
   defaultValue: {
     azimuth: 45,
     elevation: 30,
-    intensity: 1.0,
+    intensity: 2.5,
     softness: 0.5,
   },
 
