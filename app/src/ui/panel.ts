@@ -97,6 +97,13 @@ export class SettingsPanel {
           return;
         }
 
+        // Button position controls expose selection update
+        const selectButton = (control as any)._selectButton;
+        if (selectButton) {
+          selectButton(value);
+          return;
+        }
+
         // Standard controls use the value property
         if ('value' in control) {
           (control as HTMLSelectElement).value = String(value);

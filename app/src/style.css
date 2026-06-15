@@ -409,6 +409,57 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   filter: brightness(1.2);
 }
 
+/* ── Button Position Grid ────────────────────────────── */
+
+.button-position-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0;
+  min-height: 44px;
+}
+
+.button-position-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 8px;
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.button-position-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.button-position-btn:active {
+  transform: scale(0.95);
+}
+
+.button-position-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.button-position-btn.is-selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
 /* ── Select-specific styling ────────────────────────── */
 select.settings-control {
   appearance: none;

@@ -53,7 +53,30 @@ export type SettingDefinition<T> = {
 /**
  * Controls where the action buttons are placed on screen.
  * Values: tl (top-left), tr (top-right), bl (bottom-left), br (bottom-right).
+ *
+ * Poses for each corner icon: a square outline with a filled circle
+ * in the respective corner to visually indicate the position.
  */
+
+/** SVG icon showing a square with a dot in the top-left corner. */
+const ICON_TL = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="4" fill="currentColor" stroke="none"/></svg>`;
+
+/** SVG icon showing a square with a dot in the top-right corner. */
+const ICON_TR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="15" cy="9" r="4" fill="currentColor" stroke="none"/></svg>`;
+
+/** SVG icon showing a square with a dot in the bottom-left corner. */
+const ICON_BL = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="15" r="4" fill="currentColor" stroke="none"/></svg>`;
+
+/** SVG icon showing a square with a dot in the bottom-right corner. */
+const ICON_BR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="15" cy="15" r="4" fill="currentColor" stroke="none"/></svg>`;
+
+const CORNER_BUTTONS: [string, string][] = [
+  ['tl', ICON_TL],
+  ['tr', ICON_TR],
+  ['bl', ICON_BL],
+  ['br', ICON_BR],
+];
+
 const buttonPositionSetting: SettingDefinition<string> = {
   id: 'btn',
 
@@ -79,26 +102,44 @@ const buttonPositionSetting: SettingDefinition<string> = {
   },
 
   createControl(value, onChange) {
-    const select = document.createElement('select');
+    const grid = document.createElement('div');
+    grid.className = 'button-position-grid';
 
-    const options: [string, string][] = [
-      ['tl', 'Top Left'],
-      ['tr', 'Top Right'],
-      ['bl', 'Bottom Left'],
-      ['br', 'Bottom Right'],
-    ];
+    const buttons: HTMLButtonElement[] = [];
 
-    for (const [id, label] of options) {
-      const option = document.createElement('option');
-      option.value = id;
-      option.textContent = label;
-      select.append(option);
+    function selectButton(id: string) {
+      for (const btn of buttons) {
+        btn.classList.toggle('is-selected', btn.dataset.corner === id);
+      }
     }
 
-    select.value = value;
-    select.onchange = () => onChange(select.value);
+    for (const [corner, iconSvg] of CORNER_BUTTONS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'button-position-btn';
+      btn.dataset.corner = corner;
+      btn.setAttribute('aria-label', `Position buttons at ${corner.replace('tl', 'top-left').replace('tr', 'top-right').replace('bl', 'bottom-left').replace('br', 'bottom-right')}`);
+      btn.innerHTML = iconSvg;
 
-    return select;
+      if (corner === value) {
+        btn.classList.add('is-selected');
+      }
+
+      btn.addEventListener('click', () => {
+        if (btn.dataset.corner) {
+          selectButton(btn.dataset.corner);
+          onChange(btn.dataset.corner);
+        }
+      });
+
+      grid.append(btn);
+      buttons.push(btn);
+    }
+
+    // Expose a selection method for external sync (panel.ts)
+    (grid as any)._selectButton = selectButton;
+
+    return grid;
   },
 };
 
