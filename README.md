@@ -42,8 +42,8 @@ Keep models low-poly and reasonably sized (aim for <5 MB).
 
 ### Add a feature
 
-- Read [`docs/000.overview.md`](docs/000.overview.md) for the design philosophy
-- Read [`docs/002.settings.md`](docs/002.settings.md) for the settings registry contract
+- Read [`docs/000.overview.md`](app/docs/000.overview.md) for the design philosophy
+- Read [`docs/002.settings.md`](app/docs/002.settings.md) for the settings registry contract
 - Every configurable setting must be registered and URL-serializable
 - Keep it simple — no frameworks, no continuous render loops
 
