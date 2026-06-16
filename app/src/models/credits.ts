@@ -26,10 +26,12 @@ const credits: Record<string, ModelCredit> = {
   'skull.obj': {
     author: 'deater07',
     source: 'https://free3d.com/3d-model/skull-human-anatomy-82445.html',
+    license: 'CC0',
   },
   'head.obj': {
     author: 'Ron lemen',
     source: 'Planes of the Head.blend',
+    license: 'CC0',
   },
 };
 

@@ -19,3 +19,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+### 3D Models
+
+The 3D models bundled in `app/public/models/` are not covered by the MIT
+license above. Each model has its own attribution and license terms as
+documented in [`app/src/models/credits.ts`](app/src/models/credits.ts).

@@ -57,6 +57,15 @@ More in [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 ---
 
+## 3D Model Credits
+
+The 3D models in `app/public/models/` are third-party assets with their own
+license terms. Full attribution and license info is available in
+[`app/src/models/credits.ts`](app/src/models/credits.ts) and in the
+in-app settings panel.
+
+---
+
 ## License
 
 MIT
