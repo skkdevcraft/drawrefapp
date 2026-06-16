@@ -47,7 +47,8 @@ import { deserializeState } from './settings/serialization';
 import { startUrlSync } from './url/state';
 
 import { SettingsPanel, type ViewerControls } from './ui/panel';
-import { createEyeButton, EYE_OPEN_ICON, EYE_CLOSED_ICON } from './ui/button';
+import { createEyeButton } from './ui/button';
+import { EYE_OPEN_ICON, EYE_CLOSED_ICON } from './ui/icons';
 
 import { applyMaterialPreset, type MaterialPreset } from './settings/material-preset';
 import { clearPreviewCache, generateMaterialPreviews, invalidateModelPreviews } from './settings/material-preview';

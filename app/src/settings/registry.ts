@@ -58,17 +58,7 @@ export type SettingDefinition<T> = {
  * in the respective corner to visually indicate the position.
  */
 
-/** SVG icon showing a square with a dot in the top-left corner. */
-const ICON_TL = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="4" fill="currentColor" stroke="none"/></svg>`;
-
-/** SVG icon showing a square with a dot in the top-right corner. */
-const ICON_TR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="15" cy="9" r="4" fill="currentColor" stroke="none"/></svg>`;
-
-/** SVG icon showing a square with a dot in the bottom-left corner. */
-const ICON_BL = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="15" r="4" fill="currentColor" stroke="none"/></svg>`;
-
-/** SVG icon showing a square with a dot in the bottom-right corner. */
-const ICON_BR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="15" cy="15" r="4" fill="currentColor" stroke="none"/></svg>`;
+import { ICON_TL, ICON_TR, ICON_BL, ICON_BR } from '../ui/icons';
 
 const CORNER_BUTTONS: [string, string][] = [
   ['tl', ICON_TL],
