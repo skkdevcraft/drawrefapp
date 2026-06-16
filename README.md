@@ -53,6 +53,8 @@ Keep models low-poly and reasonably sized (aim for <5 MB).
 - Every configurable setting must be registered and URL-serializable
 - Keep it simple — no frameworks, no continuous render loops
 
+More in [`CONTRIBUTING.md`](CONTRIBUTING.md)
+
 ---
 
 ## License
