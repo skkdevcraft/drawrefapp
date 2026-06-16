@@ -607,6 +607,44 @@ select.settings-control {
   line-height: 1.2;
 }
 
+/* ── GitHub Link ──────────────────────────────────── */
+
+.github-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-overlay);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 48px;
+  border-bottom: 1px solid var(--border);
+}
+
+.github-link:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-overlay));
+}
+
+.github-link:active {
+  color: var(--accent-hover);
+}
+
+.github-link svg {
+  display: block;
+  flex-shrink: 0;
+}
+
 /* ── View Presets ───────────────────────────────────── */
 
 .view-presets {

@@ -15,6 +15,7 @@ import { renderSettingsPanel } from '../settings/ui';
 import { createToggleButton } from './button';
 import { renderViewPresets, type ViewerControls } from './presets';
 import { getModelCredit } from '../models/credits';
+import { GITHUB_ICON } from './icons';
 
 /* ── Types ────────────────────────────────────────── */
 
@@ -257,6 +258,23 @@ export class SettingsPanel {
     return section;
   }
 
+  /* ── GitHub Link ──────────────────────────────── */
+
+  /**
+   * Renders a button linking to the GitHub repository.
+   * Opens in a new tab with noopener/noreferrer for security.
+   */
+  private renderGitHubLink(): HTMLElement {
+    const link = document.createElement('a');
+    link.className = 'github-link';
+    link.href = 'https://github.com/skkdevcraft/drawrefapp';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.setAttribute('aria-label', 'View source code on GitHub');
+    link.innerHTML = `${GITHUB_ICON}<span>GitHub</span>`;
+    return link;
+  }
+
   /** Updates the credits section in the panel. */
   private updateCredits(): void {
     if (!this.creditsSection) return;
@@ -285,6 +303,9 @@ export class SettingsPanel {
     // Credits section
     this.creditsSection = this.renderCredits();
     this.panel.append(this.creditsSection);
+
+    // GitHub link
+    this.panel.append(this.renderGitHubLink());
   }
 
   /* ── Cleanup ─────────────────────────────────────── */
