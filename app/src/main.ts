@@ -35,6 +35,7 @@ import { createRenderLoop } from './viewer/render-loop';
 import { loadModelFromName } from './models/loader';
 import { normalizeModel } from './models/normalize';
 import { createFallbackCube } from './models/fallback';
+import { getDefaultModelId } from './models/registry';
 
 import { applyCameraState, getCameraState } from './camera/state';
 
@@ -216,11 +217,6 @@ function createViewer(canvas: HTMLCanvasElement): ViewerAPI {
  */
 const urlState = deserializeState();
 
-const modelName: string =
-  urlState && urlState.model && urlState.model.trim().length > 0
-    ? urlState.model
-    : 'skull.obj';
-
 /* ── Apply settings from URL to the settings store ──── */
 
 /**
@@ -236,6 +232,14 @@ if (urlState) {
     }
   }
 }
+
+const modelName: string =
+  (get('model') as string) ||
+  (urlState && urlState.model && urlState.model.trim().length > 0
+    ? urlState.model
+    : getDefaultModelId());
+
+
 
 /* ── 2. Create viewer (renderer, scene, camera, controls, fallback, lighting) ── */
 
@@ -592,6 +596,51 @@ function createUI(): void {
     }
   });
 
+  /* ── Model Change Sync ──────────────────────────── */
+
+  /**
+   * Loads and swaps the 3D model when the user selects a different one
+   * from the model setting control.
+   *
+   * Reuses the same load → normalise → apply pipeline as initial startup.
+   * Preserves the current camera position unless the model has never been set.
+   */
+  // The initial model is already loaded before createUI() runs,
+  // so model-change subscriptions should always preserve the camera.
+  const unsubModel = subscribe(async (id) => {
+    if (id !== 'model') return;
+
+    const newModelName = get('model') as string;
+    if (!newModelName || newModelName === currentModelName) return;
+
+    try {
+      const model = await loadModelFromName(newModelName);
+      normalizeModel(model, 1);
+
+      // Apply material preset and glossiness
+      const preset = get('material') as MaterialPreset;
+      if (preset) {
+        applyMaterialPreset(model, preset);
+      }
+      applyGlossinessToModel(model, get('gloss') as number);
+
+      currentModelName = newModelName;
+      currentModelObject = model;
+
+      viewer.setModel(model);
+      viewer.requestRender();
+
+      // Update credits in the panel
+      settingsPanel.setModelName(currentModelName);
+
+      // Regenerate material thumbnails for the new model
+      clearPreviewCache();
+      generateThumbnails();
+    } catch (err) {
+      console.error('[main] Failed to load model "' + newModelName + '":', err);
+    }
+  });
+
   /* ── Material Preview Thumbnails ──────────────────── */
 
   /**
@@ -635,6 +684,7 @@ function createUI(): void {
     unsubGloss();
     unsubMaterial();
     unsubBtn();
+    unsubModel();
     invalidateModelPreviews();
     window.removeEventListener('resize', onWindowResize);
     settingsPanel.dispose();

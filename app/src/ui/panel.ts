@@ -104,6 +104,13 @@ export class SettingsPanel {
           return;
         }
 
+        // Model selection controls expose selection update
+        const selectModel = (control as any)._selectModel;
+        if (selectModel) {
+          selectModel(value);
+          return;
+        }
+
         // Standard controls use the value property
         if ('value' in control) {
           (control as HTMLSelectElement).value = String(value);

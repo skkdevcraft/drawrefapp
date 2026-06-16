@@ -90,6 +90,12 @@ export function serializeState(
 
   /* ── Settings (omit defaults) ─────────────────── */
   for (const def of SETTINGS) {
+    // The `model` setting is handled by the explicit `model` parameter
+    // above — skip it here to avoid duplicate query parameters.
+    if (def.id === 'model') {
+      continue;
+    }
+
     const value = get(def.id);
 
     // Omit values equal to the default — shorter, cleaner URLs.
@@ -171,6 +177,12 @@ export function deserializeState(search?: string): URLState | null {
     // Each setting's deserializer validates internally and falls back
     // to its own default when the value is missing or invalid.
     settings[def.id] = def.deserialize(params.get(def.id));
+  }
+
+  // Ensure the model setting matches the explicitly parsed model value.
+  // This keeps the settings store in sync when the URL has a `model` param.
+  if (model !== null) {
+    settings['model'] = model;
   }
 
   return { version, model, camera, settings };

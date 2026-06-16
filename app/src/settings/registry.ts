@@ -504,6 +504,83 @@ const ambientLightSetting: SettingDefinition<number> = {
   },
 };
 
+/* ── Model Setting ──────────────────────────── */
+
+/**
+ * Controls which 3D model is currently displayed.
+ *
+ * Renders a grid of buttons, one per registered model, each showing
+ * a stylised SVG thumbnail. No text labels on the buttons.
+ *
+ * The selection is persisted in the `model` query parameter.
+ */
+
+import {
+  getModelEntries,
+  getDefaultModelId,
+  getModelEntry,
+} from '../models/registry';
+
+const modelSetting: SettingDefinition<string> = {
+  id: 'model',
+
+  label: 'Model',
+
+  type: 'select',
+
+  defaultValue: getDefaultModelId(),
+
+  serialize: (value) => value,
+
+  deserialize: (raw) => {
+    if (raw === null) return getDefaultModelId();
+    const entry = getModelEntry(raw);
+    return entry ? entry.id : getDefaultModelId();
+  },
+
+  createControl(value, onChange) {
+    const grid = document.createElement('div');
+    grid.className = 'model-select-grid';
+
+    const entries = getModelEntries();
+    const buttons: HTMLButtonElement[] = [];
+
+    function selectModel(id: string) {
+      for (const btn of buttons) {
+        btn.classList.toggle('is-selected', btn.dataset.model === id);
+      }
+    }
+
+    for (const entry of entries) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'model-select-btn';
+      btn.dataset.model = entry.id;
+      btn.setAttribute('aria-label', entry.label);
+      btn.innerHTML = entry.thumbnail;
+
+      if (entry.id === value) {
+        btn.classList.add('is-selected');
+      }
+
+      btn.addEventListener('click', () => {
+        if (btn.dataset.model) {
+          selectModel(btn.dataset.model);
+          onChange(btn.dataset.model);
+        }
+      });
+
+      grid.append(btn);
+      buttons.push(btn);
+    }
+
+    // Expose a selection method for external sync (panel.ts)
+    (grid as any)._selectModel = selectModel;
+
+    return grid;
+  },
+};
+
 /* ── Registry ──────────────────────────────────────── */
 
 /**
@@ -516,6 +593,7 @@ const ambientLightSetting: SettingDefinition<number> = {
  * of setting definitions for type-safe iteration.
  */
 export const SETTINGS = [
+  modelSetting,
   buttonPositionSetting,
   backgroundColorSetting,
   glossinessSetting,

@@ -409,6 +409,65 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   filter: brightness(1.2);
 }
 
+/* ── Model Selection Grid ──────────────────────────── */
+
+.model-select-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0;
+  min-height: 44px;
+}
+
+.model-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.model-select-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.model-select-btn:active {
+  transform: scale(0.95);
+}
+
+.model-select-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.model-select-btn.is-selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+}
+
+.model-select-btn svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+}
+
 /* ── Button Position Grid ────────────────────────────── */
 
 .button-position-grid {
