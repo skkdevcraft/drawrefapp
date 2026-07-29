@@ -33,6 +33,11 @@ const credits: Record<string, ModelCredit> = {
     source: 'Planes of the Head.blend',
     license: 'CC0',
   },
+  'anime-head.obj': {
+    author: 'Rodesqa',
+    source: 'https://downloadfree3d.com/characters/stylized-anime-female-head/',
+    license: 'CC0',
+  },
 };
 
 /**

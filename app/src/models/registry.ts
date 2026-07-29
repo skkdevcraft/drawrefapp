@@ -36,6 +36,12 @@ const MODELS: ModelEntry[] = [
     label: 'Head',
     thumbnail: HEAD_THUMBNAIL,
   },
+  {
+    id: 'anime-head.obj',
+    label: 'Anime Head',
+    thumbnail: HEAD_THUMBNAIL,
+  },
+
 ];
 
 /* ── Lookup Helpers ───────────────────────────────── */
